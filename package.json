@@ -10,7 +10,10 @@
   },
   "scripts": {
     "prepare": "tsc",
-    "test": "vitest",
+    "test": "vitest run --exclude='**/*.integration.test.ts'",
+    "test:watch": "vitest --exclude='**/*.integration.test.ts'",
+    "test:integration": "vitest run **/*.integration.test.ts",
+    "test:all": "vitest run",
     "build": "tsc"
   },
   "files": [
@@ -27,6 +30,7 @@
     "@biomejs/biome": "^1.5.2",
     "@google-cloud/bigquery": "^7.3.0",
     "@types/bluebird": "^3.5.42",
+    "dotenv": "^17.2.0",
     "kysely": "^0.27.2",
     "typescript": "^5.3.3",
     "vitest": "^1.2.1"

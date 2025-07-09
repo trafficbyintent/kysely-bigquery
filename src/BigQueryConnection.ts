@@ -1,7 +1,7 @@
 import {
   CompiledQuery,
   DatabaseConnection,
-  QueryResult
+  QueryResult,
 } from 'kysely';
 
 import { BigQuery, Dataset, Table } from '@google-cloud/bigquery';
@@ -12,7 +12,7 @@ export class BigQueryConnection implements DatabaseConnection {
   #client: BigQuery | Dataset | Table;
 
   constructor(config: BigQueryDialectConfig) {
-    this.#client = config.bigquery ?? new BigQuery(config.options)
+    this.#client = config.bigquery ?? new BigQuery(config.options);
   }
 
   async executeQuery<O>(compiledQuery: CompiledQuery): Promise<QueryResult<O>> {
@@ -58,7 +58,7 @@ export class BigQueryConnection implements DatabaseConnection {
     for await (const row of stream) {
       yield {
         rows: [row],
-      }
+      };
     }
   }
 }

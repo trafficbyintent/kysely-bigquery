@@ -5,7 +5,7 @@ import {
   Kysely,
   MysqlAdapter,
   MysqlQueryCompiler,
-  QueryCompiler
+  QueryCompiler,
 } from 'kysely';
 
 import { BigQueryOptions, BigQuery, Dataset, Table } from '@google-cloud/bigquery';

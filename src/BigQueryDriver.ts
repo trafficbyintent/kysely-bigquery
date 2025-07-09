@@ -1,6 +1,6 @@
 import {
   DatabaseConnection,
-  Driver
+  Driver,
 } from 'kysely';
 import { BigQueryDialectConfig } from '.';
 import { BigQueryConnection } from './BigQueryConnection';
