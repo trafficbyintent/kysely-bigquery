@@ -1,7 +1,7 @@
-import {Kysely, sql} from 'kysely';
+import { Kysely, sql } from 'kysely';
 
-import {BigQueryDialect} from '../src';
-import {createBigQueryInstance} from './config';
+import { BigQueryDialect } from '../src';
+import { createBigQueryInstance } from './config';
 
 export const expectedSimpleSelectCompiled = {
   parameters: [10, 1],
@@ -103,7 +103,10 @@ export const testProducts = [
   },
 ];
 
-// Helper functions for integration tests
+/**
+ * Create a test table with the given schema.
+ * Drops the table if it already exists.
+ */
 export async function createTestTable(
   kysely: Kysely<any>,
   dataset: string,
@@ -120,6 +123,9 @@ export async function createTestTable(
   await sql.raw(schema).execute(kysely);
 }
 
+/**
+ * Clean up a test table by dropping it if it exists.
+ */
 export async function cleanupTestTable(
   kysely: Kysely<any>,
   dataset: string,
@@ -179,8 +185,25 @@ CREATE TABLE IF NOT EXISTS test_dataset.test_orders (
   created_at TIMESTAMP NOT NULL
 )`;
 
-// Helper to generate test IDs
-export function generateTestId(): string {
-  return `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+/**
+ * Test ID counter for generating predictable test IDs.
+ * Reset this at the beginning of each test suite.
+ */
+let testIdCounter = 0;
+
+/**
+ * Generate a predictable test ID for test data.
+ * Call resetTestIdCounter() at the beginning of each test suite.
+ */
+export function generateTestId(prefix: string = 'test'): string {
+  testIdCounter++;
+  return `${prefix}_${testIdCounter}`;
+}
+
+/**
+ * Reset the test ID counter. Call this in beforeAll() or beforeEach().
+ */
+export function resetTestIdCounter(): void {
+  testIdCounter = 0;
 }
 

@@ -1,18 +1,29 @@
 import {
+  ColumnDefinitionNode,
   CreateTableNode,
   DeleteQueryNode,
+  ForeignKeyConstraintNode,
   FunctionNode,
   IdentifierNode,
   MysqlQueryCompiler,
+  OperationNode,
+  PrimaryKeyConstraintNode,
   RawNode,
   SchemableIdentifierNode,
   SetOperationNode,
   TableNode,
+  UniqueConstraintNode,
   UpdateQueryNode,
   ValueNode,
 } from 'kysely';
 
-export class BigQueryQueryCompiler extends MysqlQueryCompiler {
+/**
+ * Query compiler for BigQuery dialect.
+ * 
+ * Extends MysqlQueryCompiler and overrides methods to generate
+ * BigQuery-compatible SQL.
+ */
+export class BigQueryCompiler extends MysqlQueryCompiler {
   protected override visitSetOperation(node: SetOperationNode): void {
     if (node.operator === 'union' && !node.all) {
       this.append('union distinct ');
@@ -32,7 +43,10 @@ export class BigQueryQueryCompiler extends MysqlQueryCompiler {
         return;
       
       case 'LENGTH':
-        break;
+        /* BigQuery uses CHAR_LENGTH for character count */
+        this.append('CHAR_LENGTH');
+        this.visitFunctionArgumentList(node.arguments);
+        return;
       
       case 'DATE_FORMAT':
         if (node.arguments.length === 2) {
@@ -47,6 +61,8 @@ export class BigQueryQueryCompiler extends MysqlQueryCompiler {
         break;
       
       case 'DATE_ADD':
+        /* Pass through DATE_ADD as BigQuery supports it
+         * Note: BigQuery syntax is DATE_ADD(date, INTERVAL n unit) */
         break;
     }
 
@@ -55,14 +71,22 @@ export class BigQueryQueryCompiler extends MysqlQueryCompiler {
 
   protected override visitUpdateQuery(node: UpdateQueryNode): void {
     if (!node.where) {
-      // Let BigQuery handle the error for missing WHERE clause
+      /* BigQuery requires WHERE clause for UPDATE statements
+       * Add WHERE TRUE to allow the query to execute */
+      super.visitUpdateQuery(node);
+      this.append(' where true');
+      return;
     }
     super.visitUpdateQuery(node);
   }
 
   protected override visitDeleteQuery(node: DeleteQueryNode): void {
     if (!node.where) {
-      // Let BigQuery handle the error for missing WHERE clause
+      /* BigQuery requires WHERE clause for DELETE statements
+       * Add WHERE TRUE to allow the query to execute */
+      super.visitDeleteQuery(node);
+      this.append(' where true');
+      return;
     }
     super.visitDeleteQuery(node);
   }
@@ -81,13 +105,17 @@ export class BigQueryQueryCompiler extends MysqlQueryCompiler {
         const schemaName = (schemableNode.schema as IdentifierNode).name;
 
         if (schemaName.includes('.')) {
-          const [project, dataset] = schemaName.split('.');
-          this.visitIdentifier({kind: 'IdentifierNode', name: project} as IdentifierNode);
-          this.append('.');
-          this.visitIdentifier({kind: 'IdentifierNode', name: dataset} as IdentifierNode);
-          this.append('.');
-          this.visitIdentifier(schemableNode.identifier);
-          return;
+          const parts = schemaName.split('.');
+          if (parts.length === 2) {
+            const [project, dataset] = parts;
+            this.visitIdentifier({kind: 'IdentifierNode', name: project} as IdentifierNode);
+            this.append('.');
+            this.visitIdentifier({kind: 'IdentifierNode', name: dataset} as IdentifierNode);
+            this.append('.');
+            this.visitIdentifier(schemableNode.identifier);
+            return;
+          }
+          /* If not exactly 2 parts, fall through to default behavior */
         }
       }
     }
@@ -167,7 +195,7 @@ export class BigQueryQueryCompiler extends MysqlQueryCompiler {
     }
   }
 
-  protected visitFunctionArgumentList(args: ReadonlyArray<any>): void {
+  protected visitFunctionArgumentList(args: ReadonlyArray<OperationNode>): void {
     this.append('(');
     const lastNode = args[args.length - 1];
 
@@ -179,5 +207,69 @@ export class BigQueryQueryCompiler extends MysqlQueryCompiler {
       }
     }
     this.append(')');
+  }
+
+  protected override visitColumnDefinition(node: ColumnDefinitionNode): void {
+    // Call parent implementation first
+    super.visitColumnDefinition(node);
+    
+    // If column has inline constraints, append NOT ENFORCED
+    if (node.primaryKey || node.unique || node.references) {
+      this.append(' not enforced');
+    }
+  }
+
+  protected override visitPrimaryKeyConstraint(node: PrimaryKeyConstraintNode): void {
+    if (node.name) {
+      this.append('constraint ');
+      this.visitNode(node.name);
+      this.append(' ');
+    }
+    this.append('primary key');
+    if (node.columns) {
+      this.append(' (');
+      this.compileList(node.columns);
+      this.append(')');
+    }
+    /* BigQuery requires NOT ENFORCED for all constraints */
+    this.append(' not enforced');
+  }
+
+  protected override visitUniqueConstraint(node: UniqueConstraintNode): void {
+    if (node.name) {
+      this.append('constraint ');
+      this.visitNode(node.name);
+      this.append(' ');
+    }
+    this.append('unique');
+    if (node.columns) {
+      this.append(' (');
+      this.compileList(node.columns);
+      this.append(')');
+    }
+    /* BigQuery requires NOT ENFORCED for all constraints */
+    this.append(' not enforced');
+  }
+
+  protected override visitForeignKeyConstraint(node: ForeignKeyConstraintNode): void {
+    if (node.name) {
+      this.append('constraint ');
+      this.visitNode(node.name);
+      this.append(' ');
+    }
+    this.append('foreign key (');
+    this.compileList(node.columns);
+    this.append(') ');
+    this.visitNode(node.references);
+    if (node.onDelete) {
+      this.append(' on delete ');
+      this.append(node.onDelete);
+    }
+    if (node.onUpdate) {
+      this.append(' on update ');
+      this.append(node.onUpdate);
+    }
+    /* BigQuery requires NOT ENFORCED for all constraints */
+    this.append(' not enforced');
   }
 }

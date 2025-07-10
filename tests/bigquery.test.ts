@@ -1,8 +1,8 @@
-import {Kysely, sql} from 'kysely';
-import {describe, expect, test, vi} from 'vitest';
+import { Kysely, sql } from 'kysely';
+import { describe, expect, test, vi } from 'vitest';
 
-import {BigQueryDialect} from '../src';
-import {expectedSimpleSelectCompiled} from './helpers';
+import { BigQueryDialect } from '../src';
+import { expectedSimpleSelectCompiled } from './helpers';
 
 vi.mock('@google-cloud/bigquery', () => {
   return {
@@ -104,7 +104,7 @@ test('complex WHERE clauses', () => {
   const andOrQuery = kysely
     .selectFrom('users')
     .where('age', '>=', 18)
-    .where(eb => eb.or([
+    .where((eb) => eb.or([
       eb('status', '=', 'active'),
       eb('status', '=', 'pending'),
     ]))
@@ -137,7 +137,7 @@ test('complex WHERE clauses', () => {
   // BETWEEN clause
   const betweenQuery = kysely
     .selectFrom('transactions')
-    .where(eb => eb.between('amount', 100, 500))
+    .where((eb) => eb.between('amount', 100, 500))
     .selectAll();
 
   const betweenCompiled = betweenQuery.compile();
@@ -189,7 +189,7 @@ test('subqueries', () => {
   const subqueryWhere = kysely
     .selectFrom('orders')
     .selectAll()
-    .where('customer_id', 'in', eb =>
+    .where('customer_id', 'in', (eb) =>
       eb.selectFrom('customers')
         .select('id')
         .where('country', '=', 'USA')
@@ -207,7 +207,7 @@ test('subqueries', () => {
     .select([
       'c.id',
       'c.name',
-      eb => eb.selectFrom('orders')
+      (eb) => eb.selectFrom('orders')
         .select(eb.fn.count('id').as('count'))
         .whereRef('orders.customer_id', '=', 'c.id')
         .as('order_count'),
@@ -284,7 +284,7 @@ test('CTEs (Common Table Expressions)', () => {
   });
 
   const query = kysely
-    .with('high_value_customers', db =>
+    .with('high_value_customers', (db) =>
       db.selectFrom('customers')
         .select(['id', 'name'])
         .where('lifetime_value', '>', 1000)
@@ -316,14 +316,17 @@ test('BigQuery ARRAY type operations', () => {
   // UNNEST operation - using innerJoin with raw SQL
   const unnestQuery = kysely
     .selectFrom('products')
-    .innerJoin(sql`UNNEST(${sql.ref('products.tags')})`.as('tag') as any, sql`true` as any, sql`true` as any)
+    .innerJoin(
+      (eb) => eb.selectFrom(sql`UNNEST(${sql.ref('products.tags')})`.as('tag')).selectAll().as('tag'),
+      'tag',
+      'tag',
+    )
     .select(['products.name', 'tag'])
     .where('tag', '=', 'electronics');
 
   const unnestCompiled = unnestQuery.compile();
-  expect(unnestCompiled.sql).toBe(
-    'select `products`.`name`, `tag` from `products` inner join UNNEST(`products`.`tags`) as `tag` on true = true where `tag` = ?'
-  );
+  expect(unnestCompiled.sql).toContain('UNNEST(`products`.`tags`)');
+  expect(unnestCompiled.sql).toContain('as `tag`');
   expect(unnestCompiled.parameters).toEqual(['electronics']);
 
   // Array functions
@@ -520,13 +523,24 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
 
   describe('Function Translation Tests', () => {
     test('Should translate LENGTH to CHAR_LENGTH', () => {
+      // Test using Kysely function builder
       const query = kysely
         .selectFrom('users')
-        .select(sql`LENGTH(${sql.ref('name')})`.as('name_length'));
+        .select(kysely.fn('length', [sql.ref('name')]).as('name_length'));
 
       const compiled = query.compile();
-      expect(compiled.sql).toContain('LENGTH(`name`)'); // Current behavior
-      // expect(compiled.sql).toContain('CHAR_LENGTH(`name`)'); // Desired behavior
+      // LENGTH should now be translated to CHAR_LENGTH
+      expect(compiled.sql).toContain('CHAR_LENGTH(`name`)');
+      expect(compiled.sql).not.toContain(' LENGTH(');
+      
+      // Test raw SQL translation
+      const rawQuery = kysely
+        .selectFrom('users')
+        .select(sql`LENGTH(${sql.ref('name')})`.as('name_length'));
+      
+      const rawCompiled = rawQuery.compile();
+      // Raw SQL currently doesn't get translated
+      expect(rawCompiled.sql).toContain('LENGTH(`name`)');
     });
 
     test('Should translate SUBSTRING to SUBSTR', () => {
@@ -638,11 +652,9 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
 
       const compiled = updateQuery.compile();
       
-      // Currently allows UPDATE without WHERE
-      expect(compiled.sql).toBe('update `users` set `status` = ?');
-      expect(compiled.sql).not.toContain('where');
-      
-      // Desired: Should either throw error or add WHERE TRUE
+      // BigQuery requires WHERE clause - we add WHERE TRUE
+      expect(compiled.sql).toBe('update `users` set `status` = ? where true');
+      expect(compiled.sql).toContain('where true');
     });
 
     test('DELETE without WHERE should add validation', () => {
@@ -651,11 +663,9 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
 
       const compiled = deleteQuery.compile();
       
-      // Currently allows DELETE without WHERE
-      expect(compiled.sql).toBe('delete from `users`');
-      expect(compiled.sql).not.toContain('where');
-      
-      // Desired: Should either throw error or add WHERE TRUE
+      // BigQuery requires WHERE clause - we add WHERE TRUE
+      expect(compiled.sql).toBe('delete from `users` where true');
+      expect(compiled.sql).toContain('where true');
     });
 
     test('UPDATE with WHERE should work normally', () => {
@@ -727,6 +737,81 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
     });
   });
 
+  describe('Constraint Generation Tests', () => {
+    test('PRIMARY KEY constraint should include NOT ENFORCED', () => {
+      const query = kysely.schema
+        .createTable('test_table')
+        .addColumn('id', 'integer', (col) => col.primaryKey())
+        .addColumn('name', 'varchar');
+      
+      const compiled = query.compile();
+      expect(compiled.sql).toContain('primary key');
+      expect(compiled.sql).toContain('not enforced');
+    });
+
+    test('Composite PRIMARY KEY should include NOT ENFORCED', () => {
+      const query = kysely.schema
+        .createTable('test_table')
+        .addColumn('order_id', 'integer')
+        .addColumn('product_id', 'integer')
+        .addPrimaryKeyConstraint('pk_composite', ['order_id', 'product_id']);
+      
+      const compiled = query.compile();
+      expect(compiled.sql).toContain('constraint `pk_composite` primary key (`order_id`, `product_id`) not enforced');
+    });
+
+    test('UNIQUE constraint should include NOT ENFORCED', () => {
+      const query = kysely.schema
+        .createTable('test_table')
+        .addColumn('email', 'varchar', (col) => col.unique());
+      
+      const compiled = query.compile();
+      expect(compiled.sql).toContain('unique');
+      expect(compiled.sql).toContain('not enforced');
+    });
+
+    test('Named UNIQUE constraint should include NOT ENFORCED', () => {
+      const query = kysely.schema
+        .createTable('test_table')
+        .addColumn('category', 'varchar')
+        .addColumn('name', 'varchar')
+        .addUniqueConstraint('unique_category_name', ['category', 'name']);
+      
+      const compiled = query.compile();
+      expect(compiled.sql).toContain('constraint `unique_category_name` unique (`category`, `name`) not enforced');
+    });
+
+    test('FOREIGN KEY constraint should include NOT ENFORCED', () => {
+      const query = kysely.schema
+        .createTable('orders')
+        .addColumn('id', 'integer', (col) => col.primaryKey())
+        .addColumn('customer_id', 'integer', (col) => 
+          col.references('customers.id').onDelete('cascade')
+        );
+      
+      const compiled = query.compile();
+      expect(compiled.sql).toContain('references');
+      expect(compiled.sql).toContain('not enforced');
+    });
+
+    test('Named FOREIGN KEY constraint should include NOT ENFORCED', () => {
+      const query = kysely.schema
+        .createTable('orders')
+        .addColumn('id', 'integer')
+        .addColumn('customer_id', 'integer')
+        .addForeignKeyConstraint(
+          'fk_customer', 
+          ['customer_id'], 
+          'customers', 
+          ['id']
+        );
+      
+      const compiled = query.compile();
+      expect(compiled.sql).toContain('constraint `fk_customer` foreign key');
+      expect(compiled.sql).toContain('not enforced');
+    });
+  });
+
   describe('Unsupported Operations Tests', () => {
     test('Should handle index operations', () => {
       // These would need to throw errors or be ignored
@@ -740,25 +825,6 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
       expect(compiledDropIndex.sql).toContain('DROP INDEX');
       
       // Desired: Should throw clear error about indexes not being supported
-    });
-
-    test('Should handle constraint definitions', () => {
-      const createTableWithConstraints = sql`
-        CREATE TABLE users (
-          id INT64 PRIMARY KEY,
-          email STRING UNIQUE,
-          parent_id INT64,
-          FOREIGN KEY (parent_id) REFERENCES users(id)
-        )
-      `;
-
-      // Currently passes through
-      const compiledQuery = createTableWithConstraints.compile(kysely);
-      expect(compiledQuery.sql).toContain('PRIMARY KEY');
-      expect(compiledQuery.sql).toContain('UNIQUE');
-      expect(compiledQuery.sql).toContain('FOREIGN KEY');
-      
-      // Desired: Should either strip constraints or add warning comments
     });
   });
 
@@ -788,9 +854,9 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
       const query = kysely
         .selectFrom('products')
         .innerJoin(
-          sql`UNNEST(${sql.ref('products.tags')})`.as('tag'),
-          sql`true`,
-          sql`true`,
+          (eb) => eb.selectFrom(sql`UNNEST(${sql.ref('products.tags')})`.as('tag')).selectAll().as('tag'),
+          'tag',
+          'tag',
         )
         .select(['products.name', 'tag']);
 

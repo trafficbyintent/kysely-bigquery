@@ -40,10 +40,16 @@ Integration tests require access to a BigQuery instance. Follow these steps to s
    cp .env.example .env
    ```
 
-   Edit `.env` with your credentials. You can use either:
+   Edit `.env` with your credentials:
 
-   - A service account key file (recommended)
-   - Individual credentials (client email and private key)
+   ```bash
+   # Service account key file (recommended)
+   GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
+   GCP_PROJECT_ID=your-project-id
+   
+   # Optional: Specify dataset for tests
+   BIGQUERY_DATASET=test_dataset
+   ```
 
 3. **Set up BigQuery Test Environment**
 
@@ -59,6 +65,8 @@ Integration tests require access to a BigQuery instance. Follow these steps to s
    - `features` dataset with a `metadata` table
    - `api` dataset with a `bank_account_transactions` table
    - Sample test data
+   
+   Note: Integration tests also create temporary tables in `test_dataset` which are cleaned up automatically.
 
 4. **Run Integration Tests**
 
@@ -68,5 +76,31 @@ Integration tests require access to a BigQuery instance. Follow these steps to s
 
 ## Test Structure
 
-- `tests/*.test.ts` - Unit tests with mocked BigQuery client
-- `tests/*.integration.test.ts` - Integration tests requiring BigQuery connection
+- `bigquery.test.ts` - Unit tests with mocked BigQuery client (includes constraint tests)
+- `bigquery.integration.test.ts` - Integration tests requiring BigQuery connection (includes MySQL vs BigQuery differences)
+- `config.ts` - Shared test configuration
+- `helpers.ts` - Test utilities and fixtures
+
+## Troubleshooting
+
+### Common Test Failures
+
+1. **"Table not found" errors**
+   - Ensure your service account has BigQuery Admin permissions
+   - Run the setup script to create required datasets
+   - Check that `GCP_PROJECT_ID` matches your actual project
+
+2. **Authentication errors**
+   - Verify `GOOGLE_APPLICATION_CREDENTIALS` points to a valid service account key
+   - Ensure the service account has necessary BigQuery permissions
+
+3. **Timeout errors**
+   - Integration tests have 10-second timeouts for most operations
+   - Network latency to BigQuery can cause timeouts
+   - Consider increasing timeout values for slow connections
+
+4. **Data type errors**
+   - BigQuery is strict about data types
+   - Use proper casting for INT64, NUMERIC types
+   - Use `FROM_BASE64()` for BYTES insertion
+   - Use JSON literals for JSON fields

@@ -15,12 +15,17 @@ function freeze<T>(obj: T): Readonly<T> {
   return Object.freeze(obj);
 }
 
+/**
+ * Database introspector for BigQuery.
+ * 
+ * Provides schema metadata by querying BigQuery's INFORMATION_SCHEMA.
+ */
 export class BigQueryIntrospector implements DatabaseIntrospector {
-  readonly #db: Kysely<any>;
+  readonly #db: Kysely<unknown>;
   readonly #config: BigQueryDialectConfig;
   readonly #client: BigQuery;
 
-  constructor(db: Kysely<any>, config: BigQueryDialectConfig) {
+  constructor(db: Kysely<unknown>, config: BigQueryDialectConfig) {
     this.#db = db;
     this.#config = config;
     this.#client = new BigQuery(this.#config.options);
@@ -50,8 +55,11 @@ export class BigQueryIntrospector implements DatabaseIntrospector {
       const from = sql.id(id ?? '', 'INFORMATION_SCHEMA', 'COLUMNS');
 
       const rows = await this.#db
-        // @ts-expect-error: dynamic schema 
-        .selectFrom(from)
+        /**
+         * Using dynamic schema name which TypeScript cannot validate at compile time.
+         * The schema is constructed from dataset IDs retrieved from BigQuery.
+         */
+        .selectFrom(from as any)
         .selectAll()
         .$castTo<BigQueryInformationSchema>()
         .execute();
@@ -73,7 +81,7 @@ export class BigQueryIntrospector implements DatabaseIntrospector {
         const col = freeze({
           name: column_name,
           dataType: data_type,
-          hasDefaultValue: column_default !== 'NULL',
+          hasDefaultValue: column_default !== null && column_default !== 'NULL',
           isAutoIncrementing: false,
           isNullable: is_nullable === "YES",
         });
@@ -81,7 +89,7 @@ export class BigQueryIntrospector implements DatabaseIntrospector {
         map[index].columns.push(col);
       }
       
-    });
+    }, { concurrency: 5 }); /* Limit concurrent requests to avoid overwhelming BigQuery */
 
     return Object.values(map);
   }
@@ -95,6 +103,9 @@ export class BigQueryIntrospector implements DatabaseIntrospector {
   }
 }
 
+/**
+ * BigQuery INFORMATION_SCHEMA.COLUMNS table structure.
+ */
 interface BigQueryInformationSchema {
   table_catalog: string;
   table_schema: string;

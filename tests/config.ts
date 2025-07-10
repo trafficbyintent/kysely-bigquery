@@ -1,8 +1,11 @@
-import {BigQuery} from '@google-cloud/bigquery';
-import {config} from 'dotenv';
+import { BigQuery } from '@google-cloud/bigquery';
+import { config } from 'dotenv';
 
 config();
 
+/**
+ * Get BigQuery client options from environment variables.
+ */
 export const getBigQueryOptions = () => {
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     return {
@@ -24,6 +27,9 @@ export const getBigQueryOptions = () => {
   return undefined;
 };
 
+/**
+ * Create a BigQuery client instance with configured credentials.
+ */
 export const createBigQueryInstance = () => {
   const options = getBigQueryOptions();
   if (!options) {
