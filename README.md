@@ -373,3 +373,39 @@ Without `NOT ENFORCED`, BigQuery will reject the constraint definition.
 - **INSERT** operations don't support `ON DUPLICATE KEY UPDATE`
 - **Subqueries** have limited support for correlated subqueries in DML
 - **Constraints** are metadata only and not enforced (see [BigQuery Constraints](#bigquery-constraints) section)
+
+### Platform-Specific Limitations
+
+These are BigQuery platform limitations that cannot be addressed by the dialect:
+
+1. **Streaming Buffer Conflicts**
+   - BigQuery doesn't allow UPDATE/DELETE operations on recently streamed data
+   - Error: `UPDATE or DELETE statement over table would affect rows in the streaming buffer`
+   - **Workaround**: Add delays between insert and update/delete operations, or use load jobs instead of streaming
+
+   ```typescript
+   // In tests or operations, add delays
+   await db.insertInto('users').values(userData).execute();
+   await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for streaming buffer
+   await db.updateTable('users').set(updates).where('id', '=', userId).execute();
+   ```
+
+2. **Eventual Consistency**
+   - Table metadata and schema changes may not be immediately visible
+   - INFORMATION_SCHEMA queries might not reflect recent changes
+   - **Workaround**: Add delays or implement retry logic for metadata operations
+
+3. **Complex Query Limitations**
+   - Very complex WHERE conditions or joins may exceed BigQuery's query complexity limits
+   - Some advanced SQL features may not be supported
+   - **Workaround**: Simplify queries or use raw SQL for complex operations
+
+4. **Rate Limits and Quotas**
+   - BigQuery has various quotas for queries, DML statements, and API calls
+   - Error: `Quota exceeded` or rate limit errors
+   - **Workaround**: Implement exponential backoff and respect quota limits
+
+5. **Data Type Restrictions**
+   - ARRAY types cannot contain NULL values
+   - STRUCT fields have naming restrictions
+   - JSON columns (native) require specific syntax that differs from standard JSON operations
