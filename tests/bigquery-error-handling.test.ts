@@ -30,10 +30,7 @@ describe('BigQuery Error Handling', () => {
       const testError = new Error('Table not found: test_table');
       mockQuery.mockRejectedValue(testError);
 
-      const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM test_table',
-        parameters: [],
-      };
+      const compiledQuery = CompiledQuery.raw('SELECT * FROM test_table', []);
 
       await expect(connection.executeQuery(compiledQuery)).rejects.toThrow(
         'BigQuery query failed: Table not found: test_table'
@@ -43,10 +40,7 @@ describe('BigQuery Error Handling', () => {
     test('handles non-Error exceptions in query', async () => {
       mockQuery.mockRejectedValue('String error');
 
-      const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM test_table',
-        parameters: [],
-      };
+      const compiledQuery = CompiledQuery.raw('SELECT * FROM test_table', []);
 
       await expect(connection.executeQuery(compiledQuery)).rejects.toBe('String error');
     });
@@ -56,10 +50,7 @@ describe('BigQuery Error Handling', () => {
       timeoutError.name = 'TimeoutError';
       mockQuery.mockRejectedValue(timeoutError);
 
-      const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM large_table',
-        parameters: [],
-      };
+      const compiledQuery = CompiledQuery.raw('SELECT * FROM large_table', []);
 
       await expect(connection.executeQuery(compiledQuery)).rejects.toThrow(
         'BigQuery query failed: Query exceeded timeout'
@@ -70,10 +61,7 @@ describe('BigQuery Error Handling', () => {
       const permissionError = new Error('User does not have permission to query table');
       mockQuery.mockRejectedValue(permissionError);
 
-      const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM restricted_table',
-        parameters: [],
-      };
+      const compiledQuery = CompiledQuery.raw('SELECT * FROM restricted_table', []);
 
       await expect(connection.executeQuery(compiledQuery)).rejects.toThrow(
         'BigQuery query failed: User does not have permission to query table'
@@ -113,28 +101,28 @@ describe('BigQuery Error Handling', () => {
     });
 
     test('beginTransaction throws error', async () => {
-      const conn = await driver.acquireConnection();
+      const conn = await driver.acquireConnection() as BigQueryConnection;
       await expect(driver.beginTransaction(conn)).rejects.toThrow(
         'Transactions are not supported.'
       );
     });
 
     test('commitTransaction throws error', async () => {
-      const conn = await driver.acquireConnection();
+      const conn = await driver.acquireConnection() as BigQueryConnection;
       await expect(driver.commitTransaction(conn)).rejects.toThrow(
         'Transactions are not supported.'
       );
     });
 
     test('rollbackTransaction throws error', async () => {
-      const conn = await driver.acquireConnection();
+      const conn = await driver.acquireConnection() as BigQueryConnection;
       await expect(driver.rollbackTransaction(conn)).rejects.toThrow(
         'Transactions are not supported.'
       );
     });
 
     test('releaseConnection does not throw', async () => {
-      const conn = await driver.acquireConnection();
+      const conn = await driver.acquireConnection() as BigQueryConnection;
       await expect(driver.releaseConnection(conn)).resolves.toBeUndefined();
     });
 
@@ -147,10 +135,7 @@ describe('BigQuery Error Handling', () => {
     test('handles null query results', async () => {
       mockQuery.mockResolvedValue([null]);
 
-      const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM empty_table',
-        parameters: [],
-      };
+      const compiledQuery = CompiledQuery.raw('SELECT * FROM empty_table', []);
 
       const result = await connection.executeQuery(compiledQuery);
       expect(result.rows).toEqual([]);
@@ -159,10 +144,7 @@ describe('BigQuery Error Handling', () => {
     test('handles undefined query results', async () => {
       mockQuery.mockResolvedValue([undefined]);
 
-      const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM empty_table',
-        parameters: [],
-      };
+      const compiledQuery = CompiledQuery.raw('SELECT * FROM empty_table', []);
 
       const result = await connection.executeQuery(compiledQuery);
       expect(result.rows).toEqual([]);
@@ -171,10 +153,7 @@ describe('BigQuery Error Handling', () => {
     test('handles non-array query results', async () => {
       mockQuery.mockResolvedValue([{ notAnArray: true }]);
 
-      const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM weird_table',
-        parameters: [],
-      };
+      const compiledQuery = CompiledQuery.raw('SELECT * FROM weird_table', []);
 
       const result = await connection.executeQuery(compiledQuery);
       expect(result.rows).toEqual([]);
@@ -183,10 +162,7 @@ describe('BigQuery Error Handling', () => {
     test('handles empty array results', async () => {
       mockQuery.mockResolvedValue([[]]);
 
-      const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM empty_table',
-        parameters: [],
-      };
+      const compiledQuery = CompiledQuery.raw('SELECT * FROM empty_table', []);
 
       const result = await connection.executeQuery(compiledQuery);
       expect(result.rows).toEqual([]);
@@ -198,10 +174,7 @@ describe('BigQuery Error Handling', () => {
       const syntaxError = new Error('Syntax error: Unexpected keyword SELECT at [1:1]');
       mockQuery.mockRejectedValue(syntaxError);
 
-      const compiledQuery: CompiledQuery = {
-        sql: 'SELECT SELECT * FROM table',
-        parameters: [],
-      };
+      const compiledQuery = CompiledQuery.raw('SELECT SELECT * FROM table', []);
 
       await expect(connection.executeQuery(compiledQuery)).rejects.toThrow(
         'BigQuery query failed: Syntax error: Unexpected keyword SELECT at [1:1]'
@@ -212,10 +185,7 @@ describe('BigQuery Error Handling', () => {
       const invalidRefError = new Error('Table name "invalid..table" missing dataset');
       mockQuery.mockRejectedValue(invalidRefError);
 
-      const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM invalid..table',
-        parameters: [],
-      };
+      const compiledQuery = CompiledQuery.raw('SELECT * FROM invalid..table', []);
 
       await expect(connection.executeQuery(compiledQuery)).rejects.toThrow(
         'BigQuery query failed: Table name "invalid..table" missing dataset'

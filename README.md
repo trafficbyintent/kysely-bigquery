@@ -201,24 +201,11 @@ await db.schema
   .execute();
 ```
 
-### Important Limitations
+### Important Notes
 
-1. **No Enforcement**: BigQuery will not validate constraints during data insertion. You can:
-
-   - Insert duplicate values in PRIMARY KEY columns
-   - Insert duplicate values in UNIQUE columns
-   - Insert NULL values in PRIMARY KEY columns
-   - Insert foreign key values that don't exist in the referenced table
-
-2. **Foreign Key Restrictions**:
-
-   - Foreign keys can only reference tables within the same dataset
-   - The referenced table must exist at the time of table creation
-
-3. **Query Optimization**: Despite being unenforced, these constraints help BigQuery's query optimizer with:
-   - Inner Join Elimination
-   - Outer Join Elimination
-   - Join Reordering
+- **No Enforcement**: BigQuery constraints are metadata only and not enforced at runtime
+- **Query Optimization**: Constraints help BigQuery's query optimizer improve performance
+- **Foreign Key Restrictions**: Can only reference tables within the same dataset
 
 ### Complete Table Example
 
@@ -268,51 +255,24 @@ Without `NOT ENFORCED`, BigQuery will reject the constraint definition.
 
 ## Limitations
 
-### No Transaction Support
+### Core BigQuery Limitations
 
-BigQuery doesn't support transactions. All operations are auto-committed:
+1. **No Transaction Support** - All operations are auto-committed
+   ```typescript
+   await db.transaction().execute(async (trx) => {
+     // Throws error - BigQuery doesn't support transactions
+   });
+   ```
 
-```typescript
-await db.transaction().execute(async (trx) => {
-  // Throws error - BigQuery doesn't support transactions
-});
-```
+2. **No Indexes** - BigQuery uses automatic optimization instead
 
-### Unenforced Constraints
+3. **Case Sensitivity** - Table and column names are case-sensitive
 
-While BigQuery accepts constraint syntax, it doesn't enforce them:
+4. **Query Size Limits** - Maximum result size is 10GB (use streaming for larger results)
 
-- PRIMARY KEY, FOREIGN KEY, and UNIQUE constraints are metadata only
-- Used for query optimization, not data validation
-- Your application must ensure data integrity
+### SQL Restrictions
 
-### DML Restrictions
-
-- UPDATE and DELETE require WHERE clause (library adds `WHERE TRUE` if missing)
-- No support for INSERT ... ON DUPLICATE KEY UPDATE
-- Limited support for correlated subqueries in DML
-
-### Other Limitations
-
-- Foreign keys can only reference tables in the same dataset
-- No indexes (BigQuery uses automatic optimization)
-- Case-sensitive table and column names
-- Maximum query result size: 10GB (use streaming for larger results)
-
-## API Reference
-
-### Exported Classes
-
-- **BigQueryDialect**: Main dialect implementation for Kysely
-- **BigQueryAdapter**: Adapter for BigQuery-specific SQL generation
-- **BigQueryDriver**: Database driver handling connections
-- **BigQueryConnection**: Individual connection management
-- **BigQueryIntrospector**: Schema introspection utilities
-- **BigQueryCompiler**: SQL query compiler with BigQuery translations
-
-### Configuration Types
-
-- **BigQueryDialectConfig**: Configuration options for the dialect
-- **BigQueryDialectConfigOptions**: BigQuery client options
-
-For detailed API documentation, refer to the TypeScript definitions in the source code.
+- **UPDATE/DELETE** require WHERE clause (library automatically adds `WHERE TRUE` if missing)
+- **INSERT** operations don't support `ON DUPLICATE KEY UPDATE`
+- **Subqueries** have limited support for correlated subqueries in DML
+- **Constraints** are metadata only and not enforced (see [BigQuery Constraints](#bigquery-constraints) section)

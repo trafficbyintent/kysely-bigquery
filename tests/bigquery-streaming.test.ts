@@ -47,10 +47,7 @@ describe('BigQuery Streaming', () => {
 
     mockCreateQueryStream.mockResolvedValue(mockStream);
 
-    const compiledQuery: CompiledQuery = {
-      sql: 'SELECT * FROM users',
-      parameters: [],
-    };
+    const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
 
     const results: any[] = [];
     const stream = connection.streamQuery(compiledQuery, 1);
@@ -80,10 +77,7 @@ describe('BigQuery Streaming', () => {
 
     mockCreateQueryStream.mockResolvedValue(mockStream);
 
-    const compiledQuery: CompiledQuery = {
-      sql: 'SELECT * FROM users WHERE 1=0',
-      parameters: [],
-    };
+    const compiledQuery = CompiledQuery.raw('SELECT * FROM users WHERE 1=0', []);
 
     const results: any[] = [];
     const stream = connection.streamQuery(compiledQuery, 10);
@@ -98,10 +92,7 @@ describe('BigQuery Streaming', () => {
   test('streamQuery handles stream creation errors', async () => {
     mockCreateQueryStream.mockRejectedValue(new Error('Failed to create stream'));
 
-    const compiledQuery: CompiledQuery = {
-      sql: 'SELECT * FROM invalid_table',
-      parameters: [],
-    };
+    const compiledQuery = CompiledQuery.raw('SELECT * FROM invalid_table', []);
 
     const stream = connection.streamQuery(compiledQuery, 1);
 
@@ -130,10 +121,7 @@ describe('BigQuery Streaming', () => {
 
     mockCreateQueryStream.mockResolvedValue(mockStream);
 
-    const compiledQuery: CompiledQuery = {
-      sql: 'SELECT * FROM users',
-      parameters: [],
-    };
+    const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
 
     const results: any[] = [];
     const stream = connection.streamQuery(compiledQuery, 1);
@@ -159,10 +147,7 @@ describe('BigQuery Streaming', () => {
 
     mockCreateQueryStream.mockResolvedValue(mockStream);
 
-    const compiledQuery: CompiledQuery = {
-      sql: 'SELECT * FROM users WHERE age > ?',
-      parameters: [21],
-    };
+    const compiledQuery = CompiledQuery.raw('SELECT * FROM users WHERE age > ?', [21]);
 
     const results: any[] = [];
     const stream = connection.streamQuery(compiledQuery, 1);
@@ -181,10 +166,7 @@ describe('BigQuery Streaming', () => {
   test('streamQuery handles non-Error exceptions', async () => {
     mockCreateQueryStream.mockRejectedValue('String error');
 
-    const compiledQuery: CompiledQuery = {
-      sql: 'SELECT * FROM users',
-      parameters: [],
-    };
+    const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
 
     const stream = connection.streamQuery(compiledQuery, 1);
 
