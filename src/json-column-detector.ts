@@ -5,7 +5,7 @@ import { CompiledQuery } from 'kysely';
  * This is used to automatically serialize JSON data when inserting/updating
  */
 export class JsonColumnDetector {
-  private jsonColumnCache: Map<string, Set<string>> = new Map();
+  #jsonColumnCache: Map<string, Set<string>> = new Map();
 
   /**
    * Register JSON columns for a table
@@ -13,14 +13,14 @@ export class JsonColumnDetector {
    * @param columns Array of column names that are JSON type
    */
   registerJsonColumns(tableName: string, columns: string[]): void {
-    this.jsonColumnCache.set(tableName, new Set(columns));
+    this.#jsonColumnCache.set(tableName, new Set(columns));
   }
 
   /**
    * Check if a column is a JSON column
    */
   isJsonColumn(tableName: string, columnName: string): boolean {
-    const columns = this.jsonColumnCache.get(tableName);
+    const columns = this.#jsonColumnCache.get(tableName);
     return columns ? columns.has(columnName) : false;
   }
 
@@ -104,7 +104,7 @@ export class JsonColumnDetector {
       'properties',
       'params',
       'extra',
-      'custom'
+      'custom',
     ];
 
     const lowerColumnName = columnName.toLowerCase();

@@ -9,11 +9,11 @@
     "url": "https://github.com/trafficbyintent/kysely-bigquery"
   },
   "scripts": {
+    "build": "tsc",
     "test": "vitest run --exclude='**/*.integration.test.ts'",
-    "test:watch": "vitest --exclude='**/*.integration.test.ts'",
-    "test:integration": "vitest run **/*.integration.test.ts",
     "test:all": "vitest run",
-    "build": "tsc"
+    "test:integration": "vitest run **/*.integration.test.ts",
+    "test:watch": "vitest --exclude='**/*.integration.test.ts'"
   },
   "files": [
     "dist"
