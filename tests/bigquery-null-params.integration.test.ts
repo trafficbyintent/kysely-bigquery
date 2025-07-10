@@ -1,7 +1,7 @@
 import { Kysely, sql } from 'kysely';
 import { BigQueryDialect } from '../src';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { loadEnv } from './config';
+import { createBigQueryInstance } from './config';
 
 interface TestTable {
   id: string;
@@ -21,14 +21,9 @@ describe('BigQuery Null Parameters Integration Tests', { timeout: 30000 }, () =>
   const testTableName = 'test_dataset.null_test_table';
 
   beforeAll(async () => {
-    const config = await loadEnv();
-    
     kysely = new Kysely<Database>({
       dialect: new BigQueryDialect({
-        options: {
-          projectId: config.projectId,
-          keyFilename: config.keyFilename,
-        },
+        bigquery: createBigQueryInstance(),
       }),
     });
 
@@ -137,8 +132,8 @@ describe('BigQuery Null Parameters Integration Tests', { timeout: 30000 }, () =>
         SELECT * FROM ${sql.table(testTableName)} WHERE id = ${testId}
       `.execute(kysely);
 
-      expect(result.rows[0].email).toBeNull();
-      expect(result.rows[0].metadata).toBeNull();
+      expect((result.rows[0] as TestTable).email).toBeNull();
+      expect((result.rows[0] as TestTable).metadata).toBeNull();
     } catch (error: any) {
       console.log('Expected error:', error.message);
       expect(error.message).toContain('Parameter types must be provided for null values');

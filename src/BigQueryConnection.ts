@@ -6,6 +6,7 @@ import {
 
 import { BigQuery, Dataset, Table } from '@google-cloud/bigquery';
 import { BigQueryDialectConfig } from '.';
+import { JsonColumnDetector } from './json-column-detector';
 
 
 /**
@@ -15,28 +16,33 @@ import { BigQueryDialectConfig } from '.';
  */
 export class BigQueryConnection implements DatabaseConnection {
   #client: BigQuery | Dataset | Table;
+  #jsonDetector: JsonColumnDetector;
 
   constructor(config: BigQueryDialectConfig) {
     this.#client = config.bigquery ?? new BigQuery(config.options);
+    this.#jsonDetector = new JsonColumnDetector();
+    
+    // Register known JSON columns if provided in config
+    if (config.jsonColumns) {
+      for (const [tableName, columns] of Object.entries(config.jsonColumns)) {
+        this.#jsonDetector.registerJsonColumns(tableName, columns);
+      }
+    }
   }
 
   async executeQuery<O>(compiledQuery: CompiledQuery): Promise<QueryResult<O>> {
     try {
       const params = [...compiledQuery.parameters];
       const nullParamIndices: number[] = [];
-      const types: string[] = [];
       
-      // Process parameters to handle nulls and JSON
-      const processedParams = params.map((param, index) => {
+      // Process parameters to handle nulls and JSON serialization
+      let processedParams = this.#jsonDetector.processParameters(compiledQuery, params);
+      
+      // Check for null parameters
+      processedParams = processedParams.map((param, index) => {
         if (param === null) {
-          // Track null parameter positions
           nullParamIndices.push(index);
-          types.push('STRING'); // Default type for nulls
           return null;
-        } else if (param !== undefined && typeof param === 'object' && 
-                   !(param instanceof Date) && !(param instanceof Buffer)) {
-          // Serialize JSON objects to strings for BigQuery
-          return JSON.stringify(param);
         }
         return param;
       });
@@ -46,10 +52,27 @@ export class BigQueryConnection implements DatabaseConnection {
         params: processedParams,
       };
       
-      // BigQuery needs types array when there are null parameters
-      // According to BigQuery docs, we only provide types for the null parameters
+      // BigQuery needs types array for ALL parameters when there are null parameters
       if (nullParamIndices.length > 0) {
-        options.types = types;
+        options.types = params.map((param, index) => {
+          if (param === null) {
+            return 'STRING';
+          } else if (typeof param === 'number') {
+            return Number.isInteger(param) ? 'INT64' : 'FLOAT64';
+          } else if (typeof param === 'boolean') {
+            return 'BOOL';
+          } else if (param instanceof Date) {
+            return 'TIMESTAMP';
+          } else if (param instanceof Buffer) {
+            return 'BYTES';
+          } else if (typeof param === 'object') {
+            // Let BigQuery infer the type for arrays and objects
+            // They could be ARRAY, STRUCT, or JSON depending on the column
+            return 'JSON';
+          } else {
+            return 'STRING';
+          }
+        });
       }
 
       const [rows] = await this.#client.query(options);
@@ -92,7 +115,8 @@ export class BigQueryConnection implements DatabaseConnection {
     } catch (error) {
       // Provide more helpful error messages
       if (error instanceof Error) {
-        if (error.message.includes('Parameter types must be provided for null values')) {
+        if (error.message.includes('Parameter types must be provided for null values') ||
+            error.message.includes('Incorrect number of parameter types provided')) {
           throw new Error(
             `BigQuery query failed: ${error.message}\n` +
             `Hint: The BigQuery dialect now automatically handles null parameters. ` +
@@ -120,17 +144,15 @@ export class BigQueryConnection implements DatabaseConnection {
   async *streamQuery<O>(compiledQuery: CompiledQuery, chunkSize: number): AsyncIterableIterator<QueryResult<O>> {
     const params = [...compiledQuery.parameters];
     const nullParamIndices: number[] = [];
-    const types: string[] = [];
     
-    // Process parameters to handle nulls and JSON (same as executeQuery)
-    const processedParams = params.map((param, index) => {
+    // Process parameters to handle nulls and JSON serialization
+    let processedParams = this.#jsonDetector.processParameters(compiledQuery, params);
+    
+    // Check for null parameters
+    processedParams = processedParams.map((param, index) => {
       if (param === null) {
         nullParamIndices.push(index);
-        types.push('STRING');
         return null;
-      } else if (param !== undefined && typeof param === 'object' && 
-                 !(param instanceof Date) && !(param instanceof Buffer)) {
-        return JSON.stringify(param);
       }
       return param;
     });
@@ -140,8 +162,25 @@ export class BigQueryConnection implements DatabaseConnection {
       params: processedParams,
     };
     
+    // BigQuery needs types array for ALL parameters when there are null parameters
     if (nullParamIndices.length > 0) {
-      options.types = types;
+      options.types = params.map((param, index) => {
+        if (param === null) {
+          return 'STRING';
+        } else if (typeof param === 'number') {
+          return Number.isInteger(param) ? 'INT64' : 'FLOAT64';
+        } else if (typeof param === 'boolean') {
+          return 'BOOL';
+        } else if (param instanceof Date) {
+          return 'TIMESTAMP';
+        } else if (param instanceof Buffer) {
+          return 'BYTES';
+        } else if (typeof param === 'object') {
+          return 'JSON';
+        } else {
+          return 'STRING';
+        }
+      });
     }
 
     let stream;

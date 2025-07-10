@@ -26,6 +26,20 @@ export interface BigQueryDialectConfig {
    * If provided, this will be used instead of creating a new client.
    */
   bigquery?: BigQuery | Dataset | Table;
+  
+  /**
+   * Optional mapping of table names to their JSON column names.
+   * This enables automatic JSON serialization for these columns.
+   * 
+   * Example:
+   * ```
+   * {
+   *   'dataset.users': ['metadata', 'settings'],
+   *   'dataset.products': ['specifications']
+   * }
+   * ```
+   */
+  jsonColumns?: Record<string, string[]>;
 }
 
 /**

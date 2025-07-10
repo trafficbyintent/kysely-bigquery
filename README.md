@@ -29,7 +29,15 @@ interface Database {
 
 // Let BigQueryDialect create the BiqQuery instance:
 const options: BigQueryOptions = ...;
-const db = new Kysely<Database>({ dialect: new BigQueryDialect({ options }) });
+const db = new Kysely<Database>({ 
+  dialect: new BigQueryDialect({ 
+    options,
+    // Optional: Configure JSON columns for automatic serialization
+    jsonColumns: {
+      'some_dataset.some_table': ['metadata', 'settings']
+    }
+  }) 
+});
 
 // Or pass in an existing instance
 const bigquery: BigQuery | Dataset | Table = ...;
@@ -99,6 +107,87 @@ await db
     tags: ["electronics", "laptop", "computer"],
   })
   .execute();
+```
+
+## JSON Data Handling
+
+The dialect provides automatic JSON serialization for better developer experience when working with JSON data in BigQuery.
+
+### Automatic JSON Serialization
+
+When using STRING columns to store JSON data (the most common pattern), the dialect can automatically stringify JavaScript objects:
+
+```typescript
+// Configure JSON columns for automatic serialization
+const db = new Kysely<Database>({
+  dialect: new BigQueryDialect({
+    bigquery: bigquery,
+    jsonColumns: {
+      'dataset.users': ['metadata', 'settings'],
+      'dataset.products': ['specifications']
+    }
+  })
+});
+
+// Objects are automatically stringified for registered columns
+await db
+  .insertInto('dataset.users')
+  .values({
+    id: '123',
+    name: 'John',
+    metadata: { role: 'admin', permissions: ['read', 'write'] }, // Auto-stringified
+    settings: { theme: 'dark', notifications: true }  // Auto-stringified
+  })
+  .execute();
+
+// JSON is automatically parsed back to objects when selecting
+const user = await db
+  .selectFrom('dataset.users')
+  .selectAll()
+  .where('id', '=', '123')
+  .executeTakeFirst();
+
+console.log(user.metadata.role); // 'admin' - automatically parsed
+```
+
+### Manual JSON Handling
+
+Without explicit configuration, you need to manually stringify JSON:
+
+```typescript
+await db
+  .insertInto('dataset.users')
+  .values({
+    id: '123',
+    metadata: JSON.stringify({ role: 'admin' }) // Manual stringify required
+  })
+  .execute();
+```
+
+### Native JSON Columns
+
+For BigQuery's native JSON column type, you need to use `PARSE_JSON()`:
+
+```typescript
+// Native JSON columns require PARSE_JSON
+await sql`
+  INSERT INTO dataset.orders (id, data)
+  VALUES (${orderId}, PARSE_JSON(${JSON.stringify(orderData)}))
+`.execute(db);
+```
+
+### Querying JSON Data
+
+Use BigQuery's JSON functions to query JSON data:
+
+```typescript
+const results = await sql`
+  SELECT 
+    JSON_VALUE(metadata, '$.role') as role,
+    JSON_QUERY(settings, '$.features') as features
+  FROM dataset.users
+  WHERE JSON_VALUE(metadata, '$.role') = 'admin'
+`.execute(db);
 ```
 
 ## BigQuery SQL Compatibility

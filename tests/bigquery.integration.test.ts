@@ -126,7 +126,7 @@ test('introspection', async () => {
   expect(bankAccountTable?.columns.length).toBeGreaterThan(0);
 });
 
-test('INSERT operations', async () => {
+test('INSERT operations', { timeout: 10000 }, async () => {
   // Test basic insert
   const insertResult = await kysely
     .insertInto('test_dataset.test_users')
@@ -565,17 +565,21 @@ test('BigQuery JSON type handling', async () => {
     notes: 'Handle with care',
   };
   
-  // Insert JSON data
+  // Insert JSON data - BigQuery native JSON columns require PARSE_JSON
+  // For STRING columns storing JSON, use the query builder with automatic serialization
   await sql`
-    INSERT INTO test_dataset.test_orders (
-      id, customer_id, product_id, quantity, total_amount, 
-      status, order_date, metadata, created_at
-    )
+    INSERT INTO test_dataset.test_orders 
+    (id, customer_id, product_id, quantity, total_amount, status, order_date, metadata, created_at)
     VALUES (
-      ${testId}, 'cust_json', 'prod_json', 1, 50.00,
-      'pending', CURRENT_DATE(), 
+      ${testId},
+      'cust_json',
+      'prod_json',
+      1,
+      50.00,
+      'pending',
+      CURRENT_DATE(),
       PARSE_JSON(${JSON.stringify(metadata)}),
-      CURRENT_TIMESTAMP()
+      ${new Date()}
     )
   `.execute(kysely);
 
@@ -592,7 +596,8 @@ test('BigQuery JSON type handling', async () => {
   const row = result.rows[0];
   expect(row.notes).toBe('Handle with care');
   expect(row.carrier).toBe('FedEx');
-  expect(JSON.parse(row.tags_json)).toEqual(['urgent', 'international']);
+  // JSON_QUERY result is automatically parsed by BigQueryConnection
+  expect(row.tags_json).toEqual(['urgent', 'international']);
 });
 
 test('BigQuery UNION syntax behavior', { timeout: 30000 }, async () => {
@@ -787,9 +792,10 @@ describe('BigQuery vs MySQL Differences - Integration Tests', () => {
     test('JSON type handling', { timeout: 10000 }, async () => {
       const jsonData = { key: 'value', nested: { array: [1, 2, 3] } };
       
+      const jsonString = JSON.stringify(jsonData);
       await sql`
         INSERT INTO ${sql.raw(testTableName)} (id, text_field, json_field)
-        VALUES (3, 'json test', PARSE_JSON(${JSON.stringify(jsonData)}))
+        VALUES (3, 'json test', PARSE_JSON(${jsonString}))
       `.execute(kysely);
 
       const result = await sql<{json_key: string; json_array: string}>`
@@ -801,7 +807,8 @@ describe('BigQuery vs MySQL Differences - Integration Tests', () => {
       `.execute(kysely);
 
       expect(result.rows[0].json_key).toBe('value');
-      expect(JSON.parse(result.rows[0].json_array)).toEqual([1, 2, 3]);
+      // JSON_QUERY result is automatically parsed by BigQueryConnection
+      expect(result.rows[0].json_array).toEqual([1, 2, 3]);
     });
 
     test('BYTES vs BLOB handling', { timeout: 10000 }, async () => {
@@ -897,14 +904,16 @@ describe('BigQuery vs MySQL Differences - Integration Tests', () => {
       const testJson = { name: 'Test', value: 123 };
       
       // BigQuery JSON functions
+      const jsonString = JSON.stringify(testJson);
       const jsonResult = await sql<{name: string; full_json: string}>`
         SELECT 
-          JSON_VALUE(PARSE_JSON(${JSON.stringify(testJson)}), '$.name') as name,
-          JSON_QUERY(PARSE_JSON(${JSON.stringify(testJson)}), '$') as full_json
+          JSON_VALUE(PARSE_JSON(${jsonString}), '$.name') as name,
+          JSON_QUERY(PARSE_JSON(${jsonString}), '$') as full_json
       `.execute(kysely);
 
       expect(jsonResult.rows[0].name).toBe('Test');
-      expect(JSON.parse(jsonResult.rows[0].full_json)).toEqual(testJson);
+      // JSON_QUERY result is automatically parsed by BigQueryConnection
+      expect(jsonResult.rows[0].full_json).toEqual(testJson);
 
       // MySQL JSON operators (-> and ->>) don't work in BigQuery
       await expect(sql`

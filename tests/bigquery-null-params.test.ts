@@ -31,34 +31,34 @@ describe('BigQuery Null Parameter Handling', () => {
     const testRows = [{ id: 1, name: 'Test', email: null }];
     mockQuery.mockResolvedValue([testRows]);
 
-    const compiledQuery: CompiledQuery = {
-      sql: 'SELECT * FROM users WHERE email = ? OR status = ?',
-      parameters: [null, 'active'],
-    };
+    const compiledQuery = CompiledQuery.raw(
+      'SELECT * FROM users WHERE email = ? OR status = ?',
+      [null, 'active']
+    );
 
     await connection.executeQuery(compiledQuery);
 
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'SELECT * FROM users WHERE email = ? OR status = ?',
       params: [null, 'active'],
-      types: ['STRING']
+      types: ['STRING', 'STRING']
     });
   });
 
   test('should handle multiple null parameters', async () => {
     mockQuery.mockResolvedValue([[]]);
 
-    const compiledQuery: CompiledQuery = {
-      sql: 'INSERT INTO users (name, email, phone) VALUES (?, ?, ?)',
-      parameters: ['John', null, null],
-    };
+    const compiledQuery = CompiledQuery.raw(
+      'INSERT INTO users (name, email, phone) VALUES (?, ?, ?)',
+      ['John', null, null]
+    );
 
     await connection.executeQuery(compiledQuery);
 
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (name, email, phone) VALUES (?, ?, ?)',
       params: ['John', null, null],
-      types: ['STRING', 'STRING']
+      types: ['STRING', 'STRING', 'STRING']
     });
   });
 
@@ -66,10 +66,10 @@ describe('BigQuery Null Parameter Handling', () => {
     mockQuery.mockResolvedValue([[]]);
 
     // This simulates what Kysely generates
-    const compiledQuery: CompiledQuery = {
-      sql: 'UPDATE users SET email = ?, updated_at = ? WHERE id = ?',
-      parameters: [null, new Date('2024-01-01'), 123],
-    };
+    const compiledQuery = CompiledQuery.raw(
+      'UPDATE users SET email = ?, updated_at = ? WHERE id = ?',
+      [null, new Date('2024-01-01'), 123]
+    );
 
     await connection.executeQuery(compiledQuery);
 
@@ -85,10 +85,10 @@ describe('BigQuery Null Parameter Handling', () => {
       new Error('Parameter types must be provided for null values via the \'types\' field in query options.')
     );
 
-    const compiledQuery: CompiledQuery = {
-      sql: 'SELECT * FROM users WHERE email = ?',
-      parameters: [null],
-    };
+    const compiledQuery = CompiledQuery.raw(
+      'SELECT * FROM users WHERE email = ?',
+      [null]
+    );
 
     await expect(connection.executeQuery(compiledQuery)).rejects.toThrow(
       'BigQuery query failed: Parameter types must be provided for null values'

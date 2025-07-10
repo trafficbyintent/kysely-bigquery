@@ -1,7 +1,7 @@
 import { Kysely, sql, JSONColumnType } from 'kysely';
 import { BigQueryDialect } from '../src';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { loadEnv } from './config';
+import { createBigQueryInstance } from './config';
 
 interface UserMetadata {
   tags: string[];
@@ -28,14 +28,12 @@ describe('BigQuery JSON Field Integration Tests', { timeout: 30000 }, () => {
   const testTableName = 'test_dataset.json_test_table';
 
   beforeAll(async () => {
-    const config = await loadEnv();
-    
     kysely = new Kysely<Database>({
       dialect: new BigQueryDialect({
-        options: {
-          projectId: config.projectId,
-          keyFilename: config.keyFilename,
-        },
+        bigquery: createBigQueryInstance(),
+        jsonColumns: {
+          'test_dataset.json_test_table': ['metadata', 'preferences']
+        }
       }),
     });
 
@@ -75,8 +73,8 @@ describe('BigQuery JSON Field Integration Tests', { timeout: 30000 }, () => {
         .values({
           id: testId,
           name: 'Test User',
-          metadata: metadata,
-          preferences: { language: 'en', timezone: 'UTC' },
+          metadata: metadata as any,
+          preferences: { language: 'en', timezone: 'UTC' } as any,
           created_at: new Date(),
         })
         .execute();
@@ -126,8 +124,8 @@ describe('BigQuery JSON Field Integration Tests', { timeout: 30000 }, () => {
       await kysely
         .updateTable(testTableName)
         .set({
-          metadata: newMetadata,
-          preferences: { language: 'es', timezone: 'PST' },
+          metadata: newMetadata as any,
+          preferences: { language: 'es', timezone: 'PST' } as any,
         })
         .where('id', '=', testId)
         .execute();
@@ -237,7 +235,7 @@ describe('BigQuery JSON Field Integration Tests', { timeout: 30000 }, () => {
         .values({
           id: testId,
           name: 'Test User',
-          metadata: { tags: [], settings: { theme: 'light', notifications: false } },
+          metadata: { tags: [], settings: { theme: 'light', notifications: false } } as any,
           preferences: complexData as any,
           created_at: new Date(),
         })
