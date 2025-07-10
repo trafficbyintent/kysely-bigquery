@@ -1,12 +1,10 @@
-import {
-  DatabaseConnection,
-  Driver,
-} from 'kysely';
-import { BigQueryDialectConfig } from '.';
-import { BigQueryConnection } from './BigQueryConnection';
+import {DatabaseConnection, Driver} from 'kysely';
+
+import {BigQueryDialectConfig} from '.';
+import {BigQueryConnection} from './BigQueryConnection';
 
 export class BigQueryDriver implements Driver {
-  #config: BigQueryDialectConfig;
+  readonly #config: BigQueryDialectConfig;
 
   constructor(config: BigQueryDialectConfig) {
     this.#config = config;

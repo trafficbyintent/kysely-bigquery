@@ -1,6 +1,7 @@
-import { Kysely, sql } from 'kysely';
-import { BigQueryDialect } from '../src';
-import { createBigQueryInstance } from './config';
+import {Kysely, sql} from 'kysely';
+
+import {BigQueryDialect} from '../src';
+import {createBigQueryInstance} from './config';
 
 export const expectedSimpleSelectCompiled = {
   parameters: [10, 1],

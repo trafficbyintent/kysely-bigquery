@@ -30,7 +30,7 @@ export class BigQueryIntrospector implements DatabaseIntrospector {
     
     const [datasets] = await this.#client.getDatasets();
 
-    return datasets.map(dataset => {
+    return datasets.map((dataset) => {
       return freeze({
         name: dataset.id ?? '',
       });

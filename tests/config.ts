@@ -1,5 +1,5 @@
-import {config} from 'dotenv';
 import {BigQuery} from '@google-cloud/bigquery';
+import {config} from 'dotenv';
 
 config();
 
@@ -10,7 +10,7 @@ export const getBigQueryOptions = () => {
       projectId: process.env.GCP_PROJECT_ID,
     };
   }
-  
+
   if (process.env.GCP_CLIENT_EMAIL && process.env.GCP_PRIVATE_KEY) {
     return {
       projectId: process.env.GCP_PROJECT_ID,
@@ -20,7 +20,7 @@ export const getBigQueryOptions = () => {
       },
     };
   }
-  
+
   return undefined;
 };
 

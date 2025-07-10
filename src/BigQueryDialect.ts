@@ -1,16 +1,15 @@
+import {BigQuery, BigQueryOptions, Dataset, Table} from '@google-cloud/bigquery';
 import {
   DatabaseIntrospector,
   Dialect,
   Driver,
   Kysely,
   MysqlAdapter,
-  MysqlQueryCompiler,
   QueryCompiler,
 } from 'kysely';
-
-import { BigQueryOptions, BigQuery, Dataset, Table } from '@google-cloud/bigquery';
-import { BigQueryDriver } from './BigQueryDriver';
-import { BigQueryIntrospector } from './BigQueryIntrospector';
+import {BigQueryDriver} from './BigQueryDriver';
+import {BigQueryIntrospector} from './BigQueryIntrospector';
+import {BigQueryQueryCompiler} from './BigQueryQueryCompiler';
 
 export interface BigQueryDialectConfig {
   options?: BigQueryOptions;
@@ -18,7 +17,7 @@ export interface BigQueryDialectConfig {
 }
 
 export class BigQueryDialect implements Dialect {
-  #config: BigQueryDialectConfig;
+  readonly #config: BigQueryDialectConfig;
 
   constructor(config?: BigQueryDialectConfig) {
     this.#config = config ?? {};
@@ -33,13 +32,11 @@ export class BigQueryDialect implements Dialect {
   }
 
   createQueryCompiler(): QueryCompiler {
-    return new MysqlQueryCompiler();
+    return new BigQueryQueryCompiler();
   }
 
   createIntrospector(db: Kysely<any>): DatabaseIntrospector {
     return new BigQueryIntrospector(db, this.#config);
   }
 }
-
-
 

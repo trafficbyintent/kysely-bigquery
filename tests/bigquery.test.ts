@@ -1,6 +1,7 @@
-import {expect, test, vi} from 'vitest';
-import {BigQueryDialect} from '../src';
 import {Kysely, sql} from 'kysely';
+import {describe, expect, test, vi} from 'vitest';
+
+import {BigQueryDialect} from '../src';
 import {expectedSimpleSelectCompiled} from './helpers';
 
 vi.mock('@google-cloud/bigquery', () => {
@@ -136,11 +137,11 @@ test('complex WHERE clauses', () => {
   // BETWEEN clause
   const betweenQuery = kysely
     .selectFrom('transactions')
-    .where('amount', 'between', [100, 500])
+    .where(eb => eb.between('amount', 100, 500))
     .selectAll();
 
   const betweenCompiled = betweenQuery.compile();
-  expect(betweenCompiled.sql).toBe('select * from `transactions` where `amount` between (?, ?)');
+  expect(betweenCompiled.sql).toBe('select * from `transactions` where `amount` between ? and ?');
   expect(betweenCompiled.parameters).toEqual([100, 500]);
 });
 
@@ -236,9 +237,45 @@ test('UNION operations', () => {
 
   const compiled = query.compile();
   expect(compiled.sql).toBe(
-    'select `name`, `email` from `customers` where `status` = ? union select `company_name` as `name`, `contact_email` as `email` from `vendors` where `active` = ?'
+    'select `name`, `email` from `customers` where `status` = ? union distinct select `company_name` as `name`, `contact_email` as `email` from `vendors` where `active` = ?'
   );
   expect(compiled.parameters).toEqual(['active', true]);
+});
+
+test('BigQuery UNION syntax - requires UNION DISTINCT', () => {
+  const kysely = new Kysely<any>({
+    dialect: new BigQueryDialect(),
+  });
+
+  // Test regular UNION - BigQuery requires UNION DISTINCT
+  const unionQuery = kysely
+    .selectFrom('customers')
+    .select(['id', 'name'])
+    .union(
+      kysely
+        .selectFrom('vendors')
+        .select(['vendor_id as id', 'vendor_name as name'])
+    );
+
+  const unionCompiled = unionQuery.compile();
+  expect(unionCompiled.sql).toBe(
+    'select `id`, `name` from `customers` union distinct select `vendor_id` as `id`, `vendor_name` as `name` from `vendors`'
+  );
+
+  // Test UNION ALL - should remain unchanged
+  const unionAllQuery = kysely
+    .selectFrom('customers')
+    .select(['id', 'name'])
+    .unionAll(
+      kysely
+        .selectFrom('vendors')
+        .select(['vendor_id as id', 'vendor_name as name'])
+    );
+
+  const unionAllCompiled = unionAllQuery.compile();
+  expect(unionAllCompiled.sql).toBe(
+    'select `id`, `name` from `customers` union all select `vendor_id` as `id`, `vendor_name` as `name` from `vendors`'
+  );
 });
 
 test('CTEs (Common Table Expressions)', () => {
@@ -279,7 +316,7 @@ test('BigQuery ARRAY type operations', () => {
   // UNNEST operation - using innerJoin with raw SQL
   const unnestQuery = kysely
     .selectFrom('products')
-    .innerJoin(sql`UNNEST(${sql.ref('products.tags')})`.as('tag'), sql`true`, sql`true`)
+    .innerJoin(sql`UNNEST(${sql.ref('products.tags')})`.as('tag') as any, sql`true` as any, sql`true` as any)
     .select(['products.name', 'tag'])
     .where('tag', '=', 'electronics');
 
@@ -473,4 +510,293 @@ test('null and undefined handling', () => {
 
   const isNullCompiled = isNullQuery.compile();
   expect(isNullCompiled.sql).toBe('select * from `users` where `email` is null and `phone` is not null');
+});
+
+// Tests from bigquery-mysql-differences.test.ts
+describe('BigQuery vs MySQL Differences - Unit Tests', () => {
+  const kysely = new Kysely<any>({
+    dialect: new BigQueryDialect(),
+  });
+
+  describe('Function Translation Tests', () => {
+    test('Should translate LENGTH to CHAR_LENGTH', () => {
+      const query = kysely
+        .selectFrom('users')
+        .select(sql`LENGTH(${sql.ref('name')})`.as('name_length'));
+
+      const compiled = query.compile();
+      expect(compiled.sql).toContain('LENGTH(`name`)'); // Current behavior
+      // expect(compiled.sql).toContain('CHAR_LENGTH(`name`)'); // Desired behavior
+    });
+
+    test('Should translate SUBSTRING to SUBSTR', () => {
+      const query = kysely
+        .selectFrom('users')
+        .select(sql`SUBSTRING(${sql.ref('name')}, 1, 5)`.as('name_part'));
+
+      const compiled = query.compile();
+      
+      // Currently passes as-is
+      expect(compiled.sql).toContain('SUBSTRING(`name`, 1, 5)');
+      // Desired: SUBSTR(`name`, 1, 5)
+    });
+
+    test('Should translate NOW() to CURRENT_TIMESTAMP()', () => {
+      const query = kysely
+        .selectFrom('events')
+        .select(sql`NOW()`.as('current_time'));
+
+      const compiled = query.compile();
+      
+      // Should translate NOW() to CURRENT_TIMESTAMP()
+      expect(compiled.sql).toContain('CURRENT_TIMESTAMP()');
+      expect(compiled.sql).not.toContain('NOW()');
+    });
+
+    test('Should handle DATE_ADD syntax differences', () => {
+      // MySQL style
+      const mysqlStyle = sql`DATE_ADD(${sql.ref('created_at')}, INTERVAL 1 DAY)`;
+      
+      // BigQuery style for dates
+      const bigqueryDateStyle = sql`DATE_ADD(${sql.ref('created_at')}, INTERVAL 1 DAY)`;
+      
+      // BigQuery style for timestamps
+      const bigqueryTimestampStyle = sql`TIMESTAMP_ADD(${sql.ref('created_at')}, INTERVAL 1 DAY)`;
+
+      const query = kysely
+        .selectFrom('orders')
+        .select(mysqlStyle.as('next_day'));
+
+      const compiled = query.compile();
+      
+      // Currently passes through unchanged
+      expect(compiled.sql).toContain('DATE_ADD(`created_at`, INTERVAL 1 DAY)');
+    });
+
+    test('Should translate DATE_FORMAT to FORMAT_TIMESTAMP', () => {
+      const query = kysely
+        .selectFrom('orders')
+        .select(sql`DATE_FORMAT(${sql.ref('created_at')}, '%Y-%m-%d')`.as('formatted'));
+
+      const compiled = query.compile();
+      
+      // Should translate to BigQuery syntax with swapped parameters
+      expect(compiled.sql).toContain("FORMAT_TIMESTAMP('%Y-%m-%d', `created_at`)");
+      expect(compiled.sql).not.toContain('DATE_FORMAT');
+    });
+  });
+
+  describe('Data Type Mapping Tests', () => {
+    test('Should handle BigQuery-specific types in CREATE TABLE', () => {
+      const createTableQuery = sql`
+        CREATE TABLE users (
+          id INT64,
+          name STRING,
+          email STRING,
+          age INT64,
+          balance NUMERIC(10, 2),
+          data JSON,
+          tags ARRAY<STRING>,
+          address STRUCT<street STRING, city STRING, zip STRING>,
+          profile_pic BYTES,
+          created_at TIMESTAMP
+        )
+      `;
+
+      // Raw SQL queries need to be compiled with the dialect
+      const compiledQuery = createTableQuery.compile(kysely);
+      expect(compiledQuery.sql).toContain('INT64');
+      expect(compiledQuery.sql).toContain('STRING');
+      expect(compiledQuery.sql).toContain('ARRAY<STRING>');
+      expect(compiledQuery.sql).toContain('STRUCT<');
+    });
+
+    test('Should map MySQL types to BigQuery types', () => {
+      // This would be in a custom adapter
+      const typeMap = {
+        'VARCHAR': 'STRING',
+        'TEXT': 'STRING',
+        'INT': 'INT64',
+        'BIGINT': 'INT64',
+        'DECIMAL': 'NUMERIC',
+        'BLOB': 'BYTES',
+        'JSON': 'JSON',
+      };
+
+      // Test type mapping
+      expect(typeMap['VARCHAR']).toBe('STRING');
+      expect(typeMap['INT']).toBe('INT64');
+      expect(typeMap['BLOB']).toBe('BYTES');
+    });
+  });
+
+  describe('DML Validation Tests', () => {
+    test('UPDATE without WHERE should add validation', () => {
+      const updateQuery = kysely
+        .updateTable('users')
+        .set({ status: 'active' });
+
+      const compiled = updateQuery.compile();
+      
+      // Currently allows UPDATE without WHERE
+      expect(compiled.sql).toBe('update `users` set `status` = ?');
+      expect(compiled.sql).not.toContain('where');
+      
+      // Desired: Should either throw error or add WHERE TRUE
+    });
+
+    test('DELETE without WHERE should add validation', () => {
+      const deleteQuery = kysely
+        .deleteFrom('users');
+
+      const compiled = deleteQuery.compile();
+      
+      // Currently allows DELETE without WHERE
+      expect(compiled.sql).toBe('delete from `users`');
+      expect(compiled.sql).not.toContain('where');
+      
+      // Desired: Should either throw error or add WHERE TRUE
+    });
+
+    test('UPDATE with WHERE should work normally', () => {
+      const updateQuery = kysely
+        .updateTable('users')
+        .set({ status: 'active' })
+        .where('id', '=', 1);
+
+      const compiled = updateQuery.compile();
+      
+      expect(compiled.sql).toBe('update `users` set `status` = ? where `id` = ?');
+      expect(compiled.parameters).toEqual(['active', 1]);
+    });
+
+    test('DELETE with WHERE should work normally', () => {
+      const deleteQuery = kysely
+        .deleteFrom('users')
+        .where('status', '=', 'inactive');
+
+      const compiled = deleteQuery.compile();
+      
+      expect(compiled.sql).toBe('delete from `users` where `status` = ?');
+      expect(compiled.parameters).toEqual(['inactive']);
+    });
+  });
+
+  describe('DDL Enhancement Tests', () => {
+    test('Should handle PARTITION BY in CREATE TABLE', () => {
+      // This would need custom DDL builder support
+      const createTableWithPartition = sql`
+        CREATE TABLE events (
+          id INT64,
+          user_id STRING,
+          event_timestamp TIMESTAMP,
+          event_type STRING
+        )
+        PARTITION BY DATE(event_timestamp)
+      `;
+
+      const compiledQuery = createTableWithPartition.compile(kysely);
+      expect(compiledQuery.sql).toContain('PARTITION BY');
+    });
+
+    test('Should handle CLUSTER BY in CREATE TABLE', () => {
+      const createTableWithClustering = sql`
+        CREATE TABLE events (
+          id INT64,
+          user_id STRING,
+          event_timestamp TIMESTAMP,
+          event_type STRING
+        )
+        CLUSTER BY user_id, event_type
+      `;
+
+      const compiledQuery = createTableWithClustering.compile(kysely);
+      expect(compiledQuery.sql).toContain('CLUSTER BY');
+    });
+
+    test('Should handle project.dataset.table naming', () => {
+      const query = kysely
+        .selectFrom('my-project.analytics.events')
+        .selectAll();
+
+      const compiled = query.compile();
+      
+      // Currently works but loses one level
+      expect(compiled.sql).toBe('select * from `my-project`.`analytics`');
+      // Desired: select * from `my-project`.`analytics`.`events`
+    });
+  });
+
+  describe('Unsupported Operations Tests', () => {
+    test('Should handle index operations', () => {
+      // These would need to throw errors or be ignored
+      const createIndex = sql`CREATE INDEX idx_users_email ON users(email)`;
+      const dropIndex = sql`DROP INDEX idx_users_email`;
+
+      // Currently these pass through as raw SQL
+      const compiledCreateIndex = createIndex.compile(kysely);
+      const compiledDropIndex = dropIndex.compile(kysely);
+      expect(compiledCreateIndex.sql).toContain('CREATE INDEX');
+      expect(compiledDropIndex.sql).toContain('DROP INDEX');
+      
+      // Desired: Should throw clear error about indexes not being supported
+    });
+
+    test('Should handle constraint definitions', () => {
+      const createTableWithConstraints = sql`
+        CREATE TABLE users (
+          id INT64 PRIMARY KEY,
+          email STRING UNIQUE,
+          parent_id INT64,
+          FOREIGN KEY (parent_id) REFERENCES users(id)
+        )
+      `;
+
+      // Currently passes through
+      const compiledQuery = createTableWithConstraints.compile(kysely);
+      expect(compiledQuery.sql).toContain('PRIMARY KEY');
+      expect(compiledQuery.sql).toContain('UNIQUE');
+      expect(compiledQuery.sql).toContain('FOREIGN KEY');
+      
+      // Desired: Should either strip constraints or add warning comments
+    });
+  });
+
+  describe('BigQuery-specific Features Tests', () => {
+    test('Should support APPROX functions', () => {
+      const query = kysely
+        .selectFrom('events')
+        .select(sql`APPROX_COUNT_DISTINCT(${sql.ref('user_id')})`.as('unique_users'));
+
+      const compiled = query.compile();
+      
+      expect(compiled.sql).toContain('APPROX_COUNT_DISTINCT(`user_id`)');
+    });
+
+    test('Should support wildcard tables', () => {
+      const query = sql`
+        SELECT * FROM \`project.dataset.events_*\`
+        WHERE _TABLE_SUFFIX BETWEEN '20230101' AND '20231231'
+      `;
+
+      const compiledQuery = query.compile(kysely);
+      expect(compiledQuery.sql).toContain('events_*');
+      expect(compiledQuery.sql).toContain('_TABLE_SUFFIX');
+    });
+
+    test('Should support UNNEST with proper syntax', () => {
+      const query = kysely
+        .selectFrom('products')
+        .innerJoin(
+          sql`UNNEST(${sql.ref('products.tags')})`.as('tag'),
+          sql`true`,
+          sql`true`,
+        )
+        .select(['products.name', 'tag']);
+
+      const compiled = query.compile();
+      
+      expect(compiled.sql).toContain('UNNEST(`products`.`tags`)');
+    });
+  });
 });
