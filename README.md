@@ -3,7 +3,7 @@
 [Kysely](https://github.com/koskimas/kysely) adapter for [BigQuery](https://cloud.google.com/bigquery?hl=en).
 
 ```bash
-npm i @google-cloud/bigquery kysely-bigquery
+npm i @google-cloud/bigquery @trafficbyintent/kysely-bigquery
 ```
 
 This project was largely adapted from [kysely-planetscale](https://github.com/depot/kysely-planetscale) and forked from [@maktouch/kysely-bigquery](https://github.com/maktouch/kysely-bigquery).
@@ -16,7 +16,7 @@ Follow [these docs](https://www.npmjs.com/package/@google-cloud/bigquery) for in
 
 ```typescript
 import { Kysely } from 'kysely';
-import { BigQueryDialect } from 'kysely-bigquery';
+import { BigQueryDialect } from '@trafficbyintent/kysely-bigquery';
 
 interface SomeTable {
   key: string;
@@ -39,6 +39,13 @@ const db = new Kysely<Database>({ dialect: new BigQueryDialect({ bigquery }) });
 The dialect accepts either BigQuery connection options or an existing BigQuery/Dataset/Table instance. Authentication is handled by the `@google-cloud/bigquery` library itself. See their [documentation](https://www.npmjs.com/package/@google-cloud/bigquery) for authentication options.
 
 For test environment setup, see [tests/README.md](tests/README.md).
+
+### Key Features
+
+- **Automatic null parameter handling** - The dialect automatically provides type hints for null parameters
+- **JSON serialization/deserialization** - Objects are automatically converted to/from JSON strings
+- **BigQuery SQL compatibility** - Automatic translation of MySQL-style queries to BigQuery syntax
+- **Constraint support** - Handles BigQuery's unenforced constraints with proper `NOT ENFORCED` syntax
 
 ## Data Type Mapping
 

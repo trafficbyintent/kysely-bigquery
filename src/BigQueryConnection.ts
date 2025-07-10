@@ -22,16 +22,66 @@ export class BigQueryConnection implements DatabaseConnection {
 
   async executeQuery<O>(compiledQuery: CompiledQuery): Promise<QueryResult<O>> {
     try {
-      const options = {
+      const params = [...compiledQuery.parameters];
+      const nullParamIndices: number[] = [];
+      const types: string[] = [];
+      
+      // Process parameters to handle nulls and JSON
+      const processedParams = params.map((param, index) => {
+        if (param === null) {
+          // Track null parameter positions
+          nullParamIndices.push(index);
+          types.push('STRING'); // Default type for nulls
+          return null;
+        } else if (param !== undefined && typeof param === 'object' && 
+                   !(param instanceof Date) && !(param instanceof Buffer)) {
+          // Serialize JSON objects to strings for BigQuery
+          return JSON.stringify(param);
+        }
+        return param;
+      });
+
+      const options: any = {
         query: compiledQuery.sql,
-        params: [...compiledQuery.parameters],
+        params: processedParams,
       };
+      
+      // BigQuery needs types array when there are null parameters
+      // According to BigQuery docs, we only provide types for the null parameters
+      if (nullParamIndices.length > 0) {
+        options.types = types;
+      }
 
       const [rows] = await this.#client.query(options);
 
+      // Process result rows to parse JSON strings back to objects
+      const processedRows = Array.isArray(rows) ? rows.map(row => {
+        const processedRow: any = {};
+        for (const [key, value] of Object.entries(row)) {
+          if (typeof value === 'string' && value.length > 0) {
+            // Try to parse JSON strings
+            try {
+              const trimmed = value.trim();
+              if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+                  (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                processedRow[key] = JSON.parse(value);
+              } else {
+                processedRow[key] = value;
+              }
+            } catch {
+              // If parsing fails, keep the original string
+              processedRow[key] = value;
+            }
+          } else {
+            processedRow[key] = value;
+          }
+        }
+        return processedRow;
+      }) : [];
+
       return {
         insertId: undefined,
-        rows: Array.isArray(rows) ? rows as O[] : [],
+        rows: processedRows as O[],
         numAffectedRows: undefined,
         /**
          * @deprecated numUpdatedOrDeletedRows is deprecated in kysely >= 0.23.
@@ -40,8 +90,15 @@ export class BigQueryConnection implements DatabaseConnection {
         numUpdatedOrDeletedRows: undefined,
       };
     } catch (error) {
-      // Re-throw with more context
+      // Provide more helpful error messages
       if (error instanceof Error) {
+        if (error.message.includes('Parameter types must be provided for null values')) {
+          throw new Error(
+            `BigQuery query failed: ${error.message}\n` +
+            `Hint: The BigQuery dialect now automatically handles null parameters. ` +
+            `If you're still seeing this error, please report it as a bug.`
+          );
+        }
         throw new Error(`BigQuery query failed: ${error.message}`);
       }
       throw error;
@@ -61,10 +118,31 @@ export class BigQueryConnection implements DatabaseConnection {
   }
 
   async *streamQuery<O>(compiledQuery: CompiledQuery, chunkSize: number): AsyncIterableIterator<QueryResult<O>> {
-    const options = {
+    const params = [...compiledQuery.parameters];
+    const nullParamIndices: number[] = [];
+    const types: string[] = [];
+    
+    // Process parameters to handle nulls and JSON (same as executeQuery)
+    const processedParams = params.map((param, index) => {
+      if (param === null) {
+        nullParamIndices.push(index);
+        types.push('STRING');
+        return null;
+      } else if (param !== undefined && typeof param === 'object' && 
+                 !(param instanceof Date) && !(param instanceof Buffer)) {
+        return JSON.stringify(param);
+      }
+      return param;
+    });
+
+    const options: any = {
       query: compiledQuery.sql,
-      params: [...compiledQuery.parameters],
+      params: processedParams,
     };
+    
+    if (nullParamIndices.length > 0) {
+      options.types = types;
+    }
 
     let stream;
     try {
@@ -78,8 +156,28 @@ export class BigQueryConnection implements DatabaseConnection {
 
     try {
       for await (const row of stream) {
+        // Process row to parse JSON strings
+        const processedRow: any = {};
+        for (const [key, value] of Object.entries(row)) {
+          if (typeof value === 'string' && value.length > 0) {
+            try {
+              const trimmed = value.trim();
+              if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+                  (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                processedRow[key] = JSON.parse(value);
+              } else {
+                processedRow[key] = value;
+              }
+            } catch {
+              processedRow[key] = value;
+            }
+          } else {
+            processedRow[key] = value;
+          }
+        }
+        
         yield {
-          rows: [row],
+          rows: [processedRow],
         };
       }
     } catch (error) {

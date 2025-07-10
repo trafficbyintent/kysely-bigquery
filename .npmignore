@@ -1,0 +1,28 @@
+# Source files (we publish dist)
+src/
+tests/
+
+# Config files
+tsconfig.json
+vitest.config.ts
+.env
+.env.example
+.securityAccount.json
+
+# Development files
+*.log
+.DS_Store
+node_modules/
+
+# Git files
+.git/
+.gitignore
+
+# CI/Scripts
+.github/
+scripts/
+
+# Documentation source
+*.md
+!README.md
+!LICENSE
