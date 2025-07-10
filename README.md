@@ -1,12 +1,12 @@
-# @maktouch/kysely-bigquery
+# @trafficbyintent/kysely-bigquery
 
 [Kysely](https://github.com/koskimas/kysely) adapter for [BigQuery](https://cloud.google.com/bigquery?hl=en).
 
 ```bash
-npm i @google-cloud/bigquery @maktouch/kysely-bigquery
+npm i @google-cloud/bigquery kysely-bigquery
 ```
 
-This project was largely adapted from [kysely-planetscale](https://github.com/depot/kysely-planetscale).
+This project was largely adapted from [kysely-planetscale](https://github.com/depot/kysely-planetscale) and forked from [@maktouch/kysely-bigquery](https://github.com/maktouch/kysely-bigquery).
 
 ## Usage
 
@@ -16,7 +16,7 @@ Follow [these docs](https://www.npmjs.com/package/@google-cloud/bigquery) for in
 
 ```typescript
 import { Kysely } from 'kysely';
-import { BigQueryDialect } from '@maktouch/kysely-bigquery';
+import { BigQueryDialect } from 'kysely-bigquery';
 
 interface SomeTable {
   key: string;
@@ -258,6 +258,7 @@ Without `NOT ENFORCED`, BigQuery will reject the constraint definition.
 ### Core BigQuery Limitations
 
 1. **No Transaction Support** - All operations are auto-committed
+
    ```typescript
    await db.transaction().execute(async (trx) => {
      // Throws error - BigQuery doesn't support transactions
