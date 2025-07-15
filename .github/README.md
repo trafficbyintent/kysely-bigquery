@@ -1,6 +1,23 @@
-# GitHub Actions Workflows
+# GitHub Actions Configuration
 
-This directory contains GitHub Actions workflows for continuous integration, testing, and releases.
+This directory contains GitHub Actions workflows and related configuration for continuous integration, testing, and releases.
+
+## Directory Structure
+
+```
+.github/
+├── workflows/
+│   ├── ci.yml              # Continuous Integration (runs on push/PR)
+│   ├── release.yml         # Automated npm publishing (on tag/manual)
+│   └── manual-release.yml  # Create release PRs with changelog
+├── act-events/             # Event payloads for local testing
+│   ├── push.json          # Simulates push to main branch
+│   ├── pull_request.json  # Simulates PR event
+│   ├── tag.json           # Simulates tag push event
+│   └── workflow_dispatch.json # Simulates manual trigger
+├── test-actions.sh        # Test workflows locally with act
+└── validate-workflows.sh  # Validate workflow syntax without Docker
+```
 
 ## Workflows Overview
 
@@ -85,86 +102,77 @@ Integration tests only run on push events to protected branches when these secre
 4. Create and download a JSON key
 5. Copy the entire JSON content as the `BIGQUERY_CREDENTIALS` secret
 
-### Branch Protection
+## Local Testing with Act
 
-It's recommended to enable branch protection rules:
+You can test GitHub Actions workflows locally using `act` before pushing changes.
 
-1. Go to Settings > Branches
-2. Add rule for main/master branch
-3. Enable "Require status checks to pass before merging"
-4. Select the "test" status check
-5. Enable "Require branches to be up to date before merging"
+### Why Two Configuration Files?
 
-## Testing Workflows Locally
-
-You can test GitHub Actions workflows locally before pushing using `act`:
+- **`.env`** - Configuration for local development (running tests directly with `npm test`)
+- **`.secrets`** - Secrets for `act` testing (simulating GitHub Actions environment)
 
 ### Setup for Local Testing
 
-1. **Install act** (if not already installed):
+1. **Install act**:
    ```bash
+   # macOS
    brew install act
+   
+   # Linux/WSL
+   curl https://raw.githubusercontent.com/nektos/act/master/install.sh | bash
    ```
 
-2. **Copy secrets template** (if exists):
+2. **Configure secrets for act**:
    ```bash
    cp .secrets.example .secrets
    ```
 
-3. **Edit `.secrets`** with your actual values (NPM_TOKEN, etc.)
+3. **Edit `.secrets`** with your values:
+   - `NPM_TOKEN` - Your npm automation token
+   - `BIGQUERY_CREDENTIALS` - Full service account JSON
+   - `BIGQUERY_PROJECT_ID` - Your GCP project ID  
+   - `BIGQUERY_DATASET` - Dataset name for tests
 
-### Running Tests with Scripts
+### Running Tests
 
-Test all workflows:
+**Using the test script** (recommended):
 ```bash
+# Test all workflows
 ./.github/test-actions.sh
+
+# Test specific workflow
+./.github/test-actions.sh ci
+./.github/test-actions.sh release
+./.github/test-actions.sh manual-release
 ```
 
-Test specific workflows:
-```bash
-./.github/test-actions.sh ci              # Test only CI workflow
-./.github/test-actions.sh release         # Test only release workflow
-./.github/test-actions.sh manual-release  # Test only manual release workflow
-```
-
-### Manual Testing with act
-
-Run specific events:
+**Using act directly**:
 ```bash
 # Test CI on push
-act push -W .github/workflows/ci.yml
+act push -W .github/workflows/ci.yml --secret-file .secrets
 
 # Test CI on pull request
-act pull_request -W .github/workflows/ci.yml
+act pull_request -W .github/workflows/ci.yml --secret-file .secrets
 
 # Test release (dry run)
-act push -W .github/workflows/release.yml --eventpath .github/act-events/tag.json --dry-run
+act push -W .github/workflows/release.yml --eventpath .github/act-events/tag.json --secret-file .secrets --dry-run
 ```
 
-### Running Tests Locally (without act)
-
+**Without Docker** (quick validation):
 ```bash
-# Run unit tests
-npm test
-
-# Run integration tests (requires .env file with BigQuery credentials)
-npm run test:integration
-
-# Run all tests
-npm run test:all
+# Validate workflow syntax and configuration
+./.github/validate-workflows.sh
 ```
 
-## Usage Examples
+## Release Process
 
 ### Automated Release (Recommended)
 
-1. Use the manual release workflow:
-   ```
-   Go to Actions → Manual Release → Run workflow
-   Select release type: patch/minor/major
-   Enter release message
-   ```
-
+1. Use the "Manual Release" workflow from Actions tab:
+   - Go to Actions → Manual Release → Run workflow
+   - Select release type: patch/minor/major
+   - Enter release message
+   
 2. Review and merge the created PR
 
 3. Create and push the tag:
@@ -174,6 +182,8 @@ npm run test:all
    git tag v1.3.2
    git push origin v1.3.2
    ```
+
+4. The Release workflow will automatically publish to npm
 
 ### Quick Release
 
@@ -187,28 +197,31 @@ npm version patch  # or minor/major
 git push origin main --tags
 ```
 
-### Manual Workflow Trigger
-
-From the Actions tab, you can manually trigger a release:
-1. Go to Actions → Release
-2. Click "Run workflow"
-3. Enter the version (e.g., "1.3.2")
-4. Click "Run workflow"
-
 ## Troubleshooting
+
+### "Context access might be invalid" warnings
+
+These warnings in your IDE are expected - they indicate that the workflow is referencing GitHub secrets. They disappear when:
+1. The `.secrets` file is properly configured for local testing
+2. The repository secrets are configured in GitHub for production
 
 ### NPM Publishing Fails
 - Check that NPM_TOKEN is set correctly
-- Ensure you have publish permissions for @trafficbyintent scope
+- Ensure you have publish permissions for the package scope
 - Verify the token hasn't expired
 - Token must be "Automation" type, not "Publish" type
 
 ### Integration Tests Skipped/Failing
 - Integration tests only run on push events (not PRs from forks)
 - Check that BigQuery secrets are set if you want them to run
-- Ensure BigQuery credentials are correctly set as secrets
 - Verify the service account has proper permissions
 - Check that the project ID matches your GCP project
+
+### Act Issues
+- If act fails to pull images, check your Docker installation
+- For M1/M2 Macs, ensure Docker Desktop is configured for ARM64
+- Use `--verbose` flag for detailed debugging output
+- Ensure `.secrets` file exists and contains all required values
 
 ### Build Failures
 - Ensure all dependencies are listed in package.json
@@ -216,29 +229,17 @@ From the Actions tab, you can manually trigger a release:
 - Verify Node.js version compatibility
 - Check that the build script produces output in `dist/`
 
-### Release Issues
-- Ensure NPM_TOKEN is valid and has publish permissions
-- Check that version tags follow semantic versioning (e.g., v1.2.3)
-- Verify package.json version matches the tag
+## Best Practices
 
-### act Issues
-- If act fails to pull images, check your Docker installation
-- For M1/M2 Macs, ensure Docker Desktop is configured for ARM64
-- Use `--verbose` flag for detailed debugging output
+1. **Test locally first**: Use `act` to test workflows before pushing
+2. **Keep secrets secure**: Never commit `.secrets` or `.env` files
+3. **Use semantic versioning**: Follow semver for releases (major.minor.patch)
+4. **Document changes**: Update CHANGELOG.md with each release
+5. **Review PR workflows**: Ensure CI passes before merging any PR
+6. **Monitor workflow runs**: Check Actions tab regularly for failures
 
-## Release Process
+## Additional Resources
 
-### Automated Release (Recommended)
-1. Use the "Manual Release" workflow from Actions tab
-2. Select release type (patch/minor/major)
-3. Enter release message for changelog
-4. Review and merge the created PR
-5. Create and push a tag: `git tag v1.2.3 && git push origin v1.2.3`
-6. The Release workflow will automatically publish to npm
-
-### Manual Release
-1. Update version in package.json
-2. Update CHANGELOG.md
-3. Commit changes
-4. Create and push tag: `git tag v1.2.3 && git push origin v1.2.3`
-5. The Release workflow will automatically publish to npm
+- [GitHub Actions Documentation](https://docs.github.com/en/actions)
+- [act Documentation](https://github.com/nektos/act)
+- [npm Publishing Best Practices](https://docs.npmjs.com/packages-and-modules/publishing-packages)

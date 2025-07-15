@@ -18,7 +18,8 @@ fi
 if [ ! -f ".secrets" ]; then
     echo "⚠️  No .secrets file found. Creating from template..."
     cp .secrets.example .secrets
-    echo "📝 Please edit .secrets with your actual values before running release tests"
+    echo "📝 Please edit .secrets with your values for local workflow testing"
+    echo "   This file simulates GitHub repository secrets for act"
 fi
 
 # Function to run a workflow test
@@ -36,6 +37,7 @@ run_workflow_test() {
     if [ -n "$extra_args" ]; then
         act -W ".github/workflows/$workflow" --eventpath ".github/act-events/$event" $extra_args
     else
+        # Use .secrets which contains all secrets needed for workflows
         act -W ".github/workflows/$workflow" --eventpath ".github/act-events/$event" --secret-file .secrets
     fi
     
