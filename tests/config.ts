@@ -1,7 +1,8 @@
 import { BigQuery } from '@google-cloud/bigquery';
 import { config } from 'dotenv';
 
-config();
+// Load configuration from .secrets file
+config({ path: '.secrets' });
 
 /**
  * Get BigQuery client options from environment variables.
@@ -33,7 +34,7 @@ export const getBigQueryOptions = () => {
 export const createBigQueryInstance = () => {
   const options = getBigQueryOptions();
   if (!options) {
-    throw new Error('No BigQuery credentials configured. Please check your .env file.');
+    throw new Error('No BigQuery credentials configured. Please check your .secrets file.');
   }
   return new BigQuery(options);
 };

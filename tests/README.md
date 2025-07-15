@@ -34,13 +34,13 @@ Integration tests require access to a BigQuery instance. Follow these steps to s
 
 2. **Configure Authentication**
 
-   Copy `.env.example` to `.env` and configure your BigQuery credentials:
+   Copy `.secrets.example` to `.secrets` and configure your BigQuery credentials:
 
    ```bash
-   cp .env.example .env
+   cp .secrets.example .secrets
    ```
 
-   Edit `.env` with your credentials:
+   Edit `.secrets` with your credentials:
 
    ```bash
    # Service account key file (recommended)
@@ -57,7 +57,7 @@ Integration tests require access to a BigQuery instance. Follow these steps to s
 
    ```bash
    # Load environment variables and run setup
-   source .env && ./scripts/setup-bigquery-test.sh
+   source .secrets && ./scripts/setup-bigquery-test.sh
    ```
 
    This script creates:

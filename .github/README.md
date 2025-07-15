@@ -108,9 +108,8 @@ You can test GitHub Actions workflows locally using `act` before pushing changes
 
 ### Configuration Files
 
-- **`.env`** - All local development configuration including BigQuery settings
-- **`.serviceAccount.json`** - Google Cloud service account credentials (referenced in `.env`)
-- **`.secrets`** - Only for npm token and other secrets needed by `act` when testing GitHub Actions locally
+- **`.secrets`** - All configuration for both local development and `act` testing (BigQuery settings, NPM token)
+- **`.serviceAccount.json`** - Google Cloud service account credentials (referenced in `.secrets`)
 
 ### Setup for Local Testing
 
@@ -123,16 +122,17 @@ You can test GitHub Actions workflows locally using `act` before pushing changes
    curl https://raw.githubusercontent.com/nektos/act/master/install.sh | bash
    ```
 
-2. **Configure secrets for act**:
+2. **Configure `.secrets`**:
    ```bash
    cp .secrets.example .secrets
    ```
-
-3. **Edit `.secrets`** with your values:
-   - `NPM_TOKEN` - Your npm automation token
-   - `BIGQUERY_CREDENTIALS` - Full service account JSON
-   - `BIGQUERY_PROJECT_ID` - Your GCP project ID  
+   Edit `.secrets` with:
+   - `NPM_TOKEN` - Your npm automation token (get from npmjs.com)
+   - `GOOGLE_APPLICATION_CREDENTIALS` - Path to service account JSON
+   - `GCP_PROJECT_ID` - Your Google Cloud project ID
    - `BIGQUERY_DATASET` - Dataset name for tests
+   - `BIGQUERY_CREDENTIALS` - Full service account JSON (for act)
+   - `BIGQUERY_PROJECT_ID` - Same as GCP_PROJECT_ID (for act)
 
 ### Running Tests
 

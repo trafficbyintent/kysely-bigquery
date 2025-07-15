@@ -8,7 +8,7 @@ LOCATION=${BIGQUERY_LOCATION:-US}
 
 if [ -z "$PROJECT_ID" ]; then
     echo "Error: GCP_PROJECT_ID environment variable is not set"
-    echo "Please set it in your .env file or export it before running this script"
+    echo "Please set it in your .secrets file or export it before running this script"
     exit 1
 fi
 
