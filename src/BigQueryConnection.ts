@@ -6,7 +6,7 @@ import {
 
 import { BigQuery, Dataset, Table } from '@google-cloud/bigquery';
 import { BigQueryDialectConfig } from '.';
-import { JsonColumnDetector } from './json-column-detector';
+import { JsonColumnDetector } from './jsonColumnDetector';
 
 
 /**
@@ -54,7 +54,7 @@ export class BigQueryConnection implements DatabaseConnection {
       
       /* BigQuery needs types array for ALL parameters when there are null parameters */
       if (nullParamIndices.length > 0) {
-        options.types = params.map((param, index) => {
+        options.types = params.map((param) => {
           if (param === null) {
             return 'STRING';
           } else if (typeof param === 'number') {
@@ -141,7 +141,7 @@ export class BigQueryConnection implements DatabaseConnection {
     throw new Error('Transactions are not supported.');
   }
 
-  async *streamQuery<O>(compiledQuery: CompiledQuery, chunkSize: number): AsyncIterableIterator<QueryResult<O>> {
+  async *streamQuery<O>(compiledQuery: CompiledQuery, _chunkSize: number): AsyncIterableIterator<QueryResult<O>> {
     const params = [...compiledQuery.parameters];
     const nullParamIndices: number[] = [];
     
@@ -164,7 +164,7 @@ export class BigQueryConnection implements DatabaseConnection {
     
     // BigQuery needs types array for ALL parameters when there are null parameters
     if (nullParamIndices.length > 0) {
-      options.types = params.map((param, index) => {
+      options.types = params.map((param) => {
         if (param === null) {
           return 'STRING';
         } else if (typeof param === 'number') {

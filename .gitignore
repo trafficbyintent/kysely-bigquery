@@ -1,6 +1,6 @@
 node_modules
 dist
 .env
-.securityAccount.json
+.serviceAccount.json
 .secrets
 .act

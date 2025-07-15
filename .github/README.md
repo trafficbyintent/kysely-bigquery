@@ -106,10 +106,11 @@ Integration tests only run on push events to protected branches when these secre
 
 You can test GitHub Actions workflows locally using `act` before pushing changes.
 
-### Why Two Configuration Files?
+### Configuration Files
 
-- **`.env`** - Configuration for local development (running tests directly with `npm test`)
-- **`.secrets`** - Secrets for `act` testing (simulating GitHub Actions environment)
+- **`.env`** - All local development configuration including BigQuery settings
+- **`.serviceAccount.json`** - Google Cloud service account credentials (referenced in `.env`)
+- **`.secrets`** - Only for npm token and other secrets needed by `act` when testing GitHub Actions locally
 
 ### Setup for Local Testing
 

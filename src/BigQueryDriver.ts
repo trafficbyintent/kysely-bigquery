@@ -1,7 +1,7 @@
 import { DatabaseConnection, Driver } from 'kysely';
 
 import { BigQueryDialectConfig } from '.';
-import { BigQueryConnection } from './BigQueryConnection';
+import { BigQueryConnection } from './bigQueryConnection';
 
 /**
  * BigQuery driver implementation for Kysely.

@@ -114,16 +114,15 @@ describe('BigQueryDialect Configuration', () => {
     );
   });
 
-  test('warns when no credentials are provided', () => {
+  test('does not warn when no credentials are provided', () => {
     // Create dialect with projectId but no credentials
     const dialect = new BigQueryDialect({
       options: { projectId: 'test-project' }
     });
 
     expect(dialect).toBeDefined();
-    expect(mockConsoleWarn).toHaveBeenCalledWith(
-      'No BigQuery credentials provided. Authentication will fall back to Application Default Credentials.'
-    );
+    // No warning should be shown as per style guide
+    expect(mockConsoleWarn).not.toHaveBeenCalled();
   });
 
   test('does not warn when options are provided with credentials', () => {

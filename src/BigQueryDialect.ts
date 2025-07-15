@@ -4,13 +4,12 @@ import {
   Dialect,
   Driver,
   Kysely,
-  MysqlAdapter,
   QueryCompiler,
 } from 'kysely';
-import {BigQueryAdapter} from './BigQueryAdapter';
-import {BigQueryDriver} from './BigQueryDriver';
-import {BigQueryIntrospector} from './BigQueryIntrospector';
-import {BigQueryCompiler} from './BigQueryCompiler';
+import {BigQueryAdapter} from './bigQueryAdapter';
+import {BigQueryDriver} from './bigQueryDriver';
+import {BigQueryIntrospector} from './bigQueryIntrospector';
+import {BigQueryCompiler} from './bigQueryCompiler';
 
 /**
  * Configuration options for BigQuery dialect.
@@ -90,9 +89,7 @@ export class BigQueryDialect implements Dialect {
 
       /* Validate credentials */
       if (!config.options.keyFilename && !config.options.credentials && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        console.warn(
-          'No BigQuery credentials provided. Authentication will fall back to Application Default Credentials.',
-        );
+        // Authentication will fall back to Application Default Credentials
       }
     }
 

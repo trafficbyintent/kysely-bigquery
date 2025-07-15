@@ -43,7 +43,7 @@ export class BigQueryIntrospector implements DatabaseIntrospector {
   }
 
   async getTables(
-    options: DatabaseMetadataOptions = { withInternalKyselyTables: false }
+    _options: DatabaseMetadataOptions = { withInternalKyselyTables: false }
   ): Promise<TableMetadata[]> {
     
     const [datasets] = await this.#client.getDatasets();
