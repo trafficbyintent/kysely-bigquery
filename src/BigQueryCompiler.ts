@@ -210,10 +210,10 @@ export class BigQueryCompiler extends MysqlQueryCompiler {
   }
 
   protected override visitColumnDefinition(node: ColumnDefinitionNode): void {
-    // Call parent implementation first
+    /* Call parent implementation first */
     super.visitColumnDefinition(node);
     
-    // If column has inline constraints, append NOT ENFORCED
+    /* If column has inline constraints, append NOT ENFORCED */
     if (node.primaryKey || node.unique || node.references) {
       this.append(' not enforced');
     }

@@ -22,7 +22,7 @@ export class BigQueryConnection implements DatabaseConnection {
     this.#client = config.bigquery ?? new BigQuery(config.options);
     this.#jsonDetector = new JsonColumnDetector();
     
-    // Register known JSON columns if provided in config
+    /* Register known JSON columns if provided in config */
     if (config.jsonColumns) {
       for (const [tableName, columns] of Object.entries(config.jsonColumns)) {
         this.#jsonDetector.registerJsonColumns(tableName, columns);
@@ -35,10 +35,10 @@ export class BigQueryConnection implements DatabaseConnection {
       const params = [...compiledQuery.parameters];
       const nullParamIndices: number[] = [];
       
-      // Process parameters to handle nulls and JSON serialization
+      /* Process parameters to handle nulls and JSON serialization */
       let processedParams = this.#jsonDetector.processParameters(compiledQuery, params);
       
-      // Check for null parameters
+      /* Check for null parameters */
       processedParams = processedParams.map((param, index) => {
         if (param === null) {
           nullParamIndices.push(index);
@@ -52,7 +52,7 @@ export class BigQueryConnection implements DatabaseConnection {
         params: processedParams,
       };
       
-      // BigQuery needs types array for ALL parameters when there are null parameters
+      /* BigQuery needs types array for ALL parameters when there are null parameters */
       if (nullParamIndices.length > 0) {
         options.types = params.map((param, index) => {
           if (param === null) {
@@ -66,8 +66,8 @@ export class BigQueryConnection implements DatabaseConnection {
           } else if (param instanceof Buffer) {
             return 'BYTES';
           } else if (typeof param === 'object') {
-            // Let BigQuery infer the type for arrays and objects
-            // They could be ARRAY, STRUCT, or JSON depending on the column
+            /* Let BigQuery infer the type for arrays and objects
+             * They could be ARRAY, STRUCT, or JSON depending on the column */
             return 'JSON';
           } else {
             return 'STRING';
@@ -77,12 +77,12 @@ export class BigQueryConnection implements DatabaseConnection {
 
       const [rows] = await this.#client.query(options);
 
-      // Process result rows to parse JSON strings back to objects
+      /* Process result rows to parse JSON strings back to objects */
       const processedRows = Array.isArray(rows) ? rows.map(row => {
         const processedRow: any = {};
         for (const [key, value] of Object.entries(row)) {
           if (typeof value === 'string' && value.length > 0) {
-            // Try to parse JSON strings
+            /* Try to parse JSON strings */
             try {
               const trimmed = value.trim();
               if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
@@ -92,7 +92,7 @@ export class BigQueryConnection implements DatabaseConnection {
                 processedRow[key] = value;
               }
             } catch {
-              // If parsing fails, keep the original string
+              /* If parsing fails, keep the original string */
               processedRow[key] = value;
             }
           } else {
@@ -113,7 +113,7 @@ export class BigQueryConnection implements DatabaseConnection {
         numUpdatedOrDeletedRows: undefined,
       };
     } catch (error) {
-      // Provide more helpful error messages
+      /* Provide more helpful error messages */
       if (error instanceof Error) {
         if (error.message.includes('Parameter types must be provided for null values') ||
             error.message.includes('Incorrect number of parameter types provided')) {
@@ -195,7 +195,7 @@ export class BigQueryConnection implements DatabaseConnection {
 
     try {
       for await (const row of stream) {
-        // Process row to parse JSON strings
+        /* Process row to parse JSON strings */
         const processedRow: any = {};
         for (const [key, value] of Object.entries(row)) {
           if (typeof value === 'string' && value.length > 0) {
@@ -220,7 +220,7 @@ export class BigQueryConnection implements DatabaseConnection {
         };
       }
     } catch (error) {
-      // Handle stream errors
+      /* Handle stream errors */
       if (error instanceof Error) {
         throw new Error(`BigQuery stream error: ${error.message}`);
       }

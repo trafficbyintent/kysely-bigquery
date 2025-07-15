@@ -39,7 +39,7 @@ export class JsonColumnDetector {
     let columns: string[] | undefined;
     let updateColumns: string[] | undefined;
 
-    // Handle INSERT queries
+    /* Handle INSERT queries */
     if (query.kind === 'InsertQueryNode' && query.into?.table) {
       tableName = this.extractTableName(query.into.table);
       if (query.columns) {
@@ -49,7 +49,7 @@ export class JsonColumnDetector {
       }
     }
 
-    // Handle UPDATE queries
+    /* Handle UPDATE queries */
     if (query.kind === 'UpdateQueryNode' && query.table?.table) {
       tableName = this.extractTableName(query.table.table);
       if (query.updates) {
@@ -68,14 +68,14 @@ export class JsonColumnDetector {
   private extractTableName(tableNode: any): string | undefined {
     if (!tableNode) return undefined;
 
-    // Handle SchemableIdentifierNode
+    /* Handle SchemableIdentifierNode */
     if (tableNode.kind === 'SchemableIdentifierNode') {
       const schema = tableNode.schema?.name;
       const table = tableNode.identifier?.name;
       return schema && table ? `${schema}.${table}` : table;
     }
 
-    // Handle simple IdentifierNode
+    /* Handle simple IdentifierNode */
     if (tableNode.kind === 'IdentifierNode') {
       return tableNode.name;
     }
@@ -125,7 +125,7 @@ export class JsonColumnDetector {
 
     const processedParams = [...params];
     
-    // For INSERT queries
+    /* For INSERT queries */
     if (columns && columns.length === params.length) {
       columns.forEach((col, index) => {
         if (this.shouldSerializeJson(tableName, col, params[index])) {
@@ -134,9 +134,9 @@ export class JsonColumnDetector {
       });
     }
 
-    // For UPDATE queries
+    /* For UPDATE queries */
     if (updateColumns && compiledQuery.sql.toUpperCase().includes('UPDATE')) {
-      // Find parameter positions for update columns
+      /* Find parameter positions for update columns */
       let paramIndex = 0;
       const updatePattern = /SET\s+(.+?)\s+WHERE/i;
       const match = compiledQuery.sql.match(updatePattern);
@@ -159,21 +159,21 @@ export class JsonColumnDetector {
    * Determine if a value should be serialized as JSON
    */
   private shouldSerializeJson(tableName: string, columnName: string, value: any): boolean {
-    // Don't serialize null values
+    /* Don't serialize null values */
     if (value === null || value === undefined) return false;
 
-    // Don't serialize non-objects
+    /* Don't serialize non-objects */
     if (typeof value !== 'object') return false;
 
-    // Don't serialize Date or Buffer objects
+    /* Don't serialize Date or Buffer objects */
     if (value instanceof Date || value instanceof Buffer) return false;
 
-    // Check if column is registered as JSON
+    /* Check if column is registered as JSON */
     if (this.isJsonColumn(tableName, columnName)) return true;
 
-    // Don't use naming convention for automatic serialization
-    // Only serialize if explicitly registered to avoid breaking STRUCT columns
-    // Users can register columns if they want automatic serialization
+    /* Don't use naming convention for automatic serialization
+     * Only serialize if explicitly registered to avoid breaking STRUCT columns
+     * Users can register columns if they want automatic serialization */
 
     return false;
   }

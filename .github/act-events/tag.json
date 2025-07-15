@@ -1,0 +1,15 @@
+{
+  "ref": "refs/tags/v1.3.2",
+  "ref_type": "tag",
+  "repository": {
+    "name": "kysely-bigquery",
+    "full_name": "trafficbyintent/kysely-bigquery",
+    "owner": {
+      "login": "trafficbyintent"
+    }
+  },
+  "sender": {
+    "login": "test-user",
+    "type": "User"
+  }
+}
