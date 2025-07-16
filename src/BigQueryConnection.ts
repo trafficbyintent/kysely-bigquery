@@ -105,12 +105,12 @@ export class BigQueryConnection implements DatabaseConnection {
       return {
         insertId: undefined,
         rows: processedRows as O[],
-        numAffectedRows: undefined,
+        numAffectedRows: undefined as any,
         /**
          * @deprecated numUpdatedOrDeletedRows is deprecated in kysely >= 0.23.
          * Kept for backward compatibility.
          */
-        numUpdatedOrDeletedRows: undefined,
+        numUpdatedOrDeletedRows: undefined as any,
       };
     } catch (error) {
       /* Provide more helpful error messages */
@@ -145,10 +145,10 @@ export class BigQueryConnection implements DatabaseConnection {
     const params = [...compiledQuery.parameters];
     const nullParamIndices: number[] = [];
     
-    // Process parameters to handle nulls and JSON serialization
+    /* Process parameters to handle nulls and JSON serialization */
     let processedParams = this.#jsonDetector.processParameters(compiledQuery, params);
     
-    // Check for null parameters
+    /* Check for null parameters */
     processedParams = processedParams.map((param, index) => {
       if (param === null) {
         nullParamIndices.push(index);
@@ -162,7 +162,7 @@ export class BigQueryConnection implements DatabaseConnection {
       params: processedParams,
     };
     
-    // BigQuery needs types array for ALL parameters when there are null parameters
+    /* BigQuery needs types array for ALL parameters when there are null parameters */
     if (nullParamIndices.length > 0) {
       options.types = params.map((param) => {
         if (param === null) {

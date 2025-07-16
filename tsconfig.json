@@ -15,10 +15,19 @@
     "alwaysStrict": true,
     "preserveConstEnums": true,
     "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "resolvePackageJsonExports": true,
+    "resolvePackageJsonImports": true,
+    "isolatedModules": true,
+    "useDefineForClassFields": true,
+    "resolveJsonModule": true
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist", "test"]

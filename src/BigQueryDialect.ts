@@ -81,15 +81,15 @@ export class BigQueryDialect implements Dialect {
     /* Validate BigQuery options if provided */
     if (config.options) {
       /* Ensure projectId is provided when using options */
-      if (!config.options.projectId && !process.env.GOOGLE_CLOUD_PROJECT) {
+      if (!config.options.projectId && !process.env['GOOGLE_CLOUD_PROJECT']) {
         throw new Error(
           'BigQuery projectId is required. Provide it in options.projectId or set GOOGLE_CLOUD_PROJECT environment variable.',
         );
       }
 
       /* Validate credentials */
-      if (!config.options.keyFilename && !config.options.credentials && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        // Authentication will fall back to Application Default Credentials
+      if (!config.options.keyFilename && !config.options.credentials && !process.env['GOOGLE_APPLICATION_CREDENTIALS']) {
+        /* Authentication will fall back to Application Default Credentials */
       }
     }
 

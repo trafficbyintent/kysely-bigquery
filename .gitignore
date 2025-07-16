@@ -4,3 +4,9 @@ dist
 .serviceAccount.json
 .secrets
 .act
+
+# Agent work files
+CLAUDE.md
+AGENT.md
+.TODOS.md
+.TODOS-USER.md

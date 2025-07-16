@@ -59,7 +59,17 @@ export class JsonColumnDetector {
       }
     }
 
-    return { tableName, columns, updateColumns };
+    const result: {
+      tableName?: string;
+      columns?: string[];
+      updateColumns?: string[];
+    } = {};
+    
+    if (tableName !== undefined) result.tableName = tableName;
+    if (columns !== undefined) result.columns = columns;
+    if (updateColumns !== undefined) result.updateColumns = updateColumns;
+    
+    return result;
   }
 
   /**

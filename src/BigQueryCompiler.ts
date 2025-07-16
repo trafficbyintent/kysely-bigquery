@@ -49,7 +49,7 @@ export class BigQueryCompiler extends MysqlQueryCompiler {
         return;
       
       case 'DATE_FORMAT':
-        if (node.arguments.length === 2) {
+        if (node.arguments.length === 2 && node.arguments[0] && node.arguments[1]) {
           this.append('FORMAT_TIMESTAMP');
           this.append('(');
           this.visitNode(node.arguments[1]); // format first
@@ -145,6 +145,7 @@ export class BigQueryCompiler extends MysqlQueryCompiler {
 
     for (let i = 0; i < translatedFragments.length; i++) {
       let fragment = translatedFragments[i];
+      if (!fragment) continue;
 
       fragment = fragment.replace(/\bNOW\s*\(\s*\)/gi, 'CURRENT_TIMESTAMP()');
 
@@ -154,6 +155,7 @@ export class BigQueryCompiler extends MysqlQueryCompiler {
     if (translatedFragments.some((f) => f.match(/\bDATE_FORMAT\s*\(/i))) {
       for (let i = 0; i < translatedFragments.length; i++) {
         let fragment = translatedFragments[i];
+        if (!fragment) continue;
 
         const fullMatch = fragment.match(/\bDATE_FORMAT\s*\(\s*([^,]+)\s*,\s*('[^']*')\s*\)/gi);
         if (fullMatch) {
@@ -168,29 +170,44 @@ export class BigQueryCompiler extends MysqlQueryCompiler {
       }
 
       if (translatedFragments.length === 2 && node.parameters.length === 1) {
-        const formatMatch = translatedFragments[1].match(/,\s*'([^']*)'(.*)$/);
-        if (formatMatch) {
-          this.append(translatedFragments[0]);
-          this.append(`'${formatMatch[1]}'`);
-          this.append(', ');
-          this.visitNode(node.parameters[0]);
-          this.append(formatMatch[2]);
-          return;
+        const secondFragment = translatedFragments[1];
+        if (secondFragment) {
+          const formatMatch = secondFragment.match(/,\s*'([^']*)'(.*)$/);
+          if (formatMatch && translatedFragments[0] && node.parameters[0]) {
+            this.append(translatedFragments[0]);
+            this.append(`'${formatMatch[1]}'`);
+            this.append(', ');
+            this.visitNode(node.parameters[0]);
+            this.append(formatMatch[2] || '');
+            return;
+          }
         }
       }
 
       for (let i = 0; i < translatedFragments.length; i++) {
-        if (i > 0 && node.parameters[i - 1]) {
-          this.visitNode(node.parameters[i - 1]);
+        if (i > 0) {
+          const param = node.parameters[i - 1];
+          if (param) {
+            this.visitNode(param);
+          }
         }
-        this.append(translatedFragments[i]);
+        const fragment = translatedFragments[i];
+        if (fragment) {
+          this.append(fragment);
+        }
       }
     } else {
       for (let i = 0; i < translatedFragments.length; i++) {
-        if (i > 0 && node.parameters[i - 1]) {
-          this.visitNode(node.parameters[i - 1]);
+        if (i > 0) {
+          const param = node.parameters[i - 1];
+          if (param) {
+            this.visitNode(param);
+          }
         }
-        this.append(translatedFragments[i]);
+        const fragment = translatedFragments[i];
+        if (fragment) {
+          this.append(fragment);
+        }
       }
     }
   }
