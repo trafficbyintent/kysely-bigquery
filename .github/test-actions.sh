@@ -2,6 +2,10 @@
 
 # Test GitHub Actions workflows locally using act
 # Usage: ./test-actions.sh [workflow-name]
+#
+# This script tests GitHub Actions workflows using 'act' (https://github.com/nektos/act)
+# Release and deployment workflows automatically run in dry-run mode when executed locally
+# to prevent accidental publishes or git operations.
 
 set -e
 
@@ -34,11 +38,18 @@ run_workflow_test() {
     echo "   Workflow: $workflow"
     echo "   Event: $event"
     
+    # Add Apple Silicon architecture flag if on M-series Mac
+    local arch_flag=""
+    if [[ $(uname -m) == "arm64" ]]; then
+        arch_flag="--container-architecture linux/amd64"
+    fi
+    
     if [ -n "$extra_args" ]; then
-        act -W ".github/workflows/$workflow" --eventpath ".github/act-events/$event" $extra_args
+        act -W ".github/workflows/$workflow" --eventpath ".github/act-events/$event" $arch_flag $extra_args
     else
         # Use .secrets which contains all secrets needed for workflows
-        act -W ".github/workflows/$workflow" --eventpath ".github/act-events/$event" --secret-file .secrets
+        # ACT=true is automatically set by act, but we can also pass additional env vars
+        act -W ".github/workflows/$workflow" --eventpath ".github/act-events/$event" --secret-file .secrets $arch_flag
     fi
     
     if [ $? -eq 0 ]; then
@@ -89,20 +100,22 @@ main() {
     if [ "$workflow_filter" == "all" ] || [ "$workflow_filter" == "release" ]; then
         echo ""
         echo "=== Release Workflow Tests ==="
+        echo "Note: Release workflows run in dry-run mode during local testing"
         
-        # Test release workflow (dry run to avoid actual publishing)
-        run_workflow_test "release.yml" "tag.json" "Release on tag push" "--dry-run" || failed=1
+        # Test release workflow (automatic dry-run for npm publish)
+        run_workflow_test "release.yml" "tag.json" "Release on tag push" || failed=1
         
-        # Test manual release trigger
-        run_workflow_test "release.yml" "workflow_dispatch.json" "Manual release trigger" "--dry-run" || failed=1
+        # Test manual release trigger (automatic dry-run)
+        run_workflow_test "release.yml" "workflow_dispatch.json" "Manual release trigger" || failed=1
     fi
     
     if [ "$workflow_filter" == "all" ] || [ "$workflow_filter" == "manual-release" ]; then
         echo ""
         echo "=== Manual Release Workflow Tests ==="
+        echo "Note: Git operations are mocked during local testing"
         
-        # Test manual release PR creation
-        run_workflow_test "manual-release.yml" "workflow_dispatch.json" "Manual release PR creation" "--dry-run" || failed=1
+        # Test manual release PR creation (automatic mocking of git push and PR creation)
+        run_workflow_test "manual-release.yml" "workflow_dispatch.json" "Manual release PR creation" || failed=1
     fi
     
     echo ""

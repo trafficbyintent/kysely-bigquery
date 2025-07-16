@@ -34,7 +34,7 @@ jobs:
     
     # Optional: Run integration tests if BigQuery credentials are provided
     - name: Run integration tests
-      if: github.event_name == 'push' && env.BIGQUERY_CREDENTIALS != ''
+      if: github.event_name == 'push' && github.repository == 'trafficbyintent/kysely-bigquery'
       run: npm run test:integration
       env:
         BIGQUERY_CREDENTIALS: ${{ secrets.BIGQUERY_CREDENTIALS }}

@@ -10,11 +10,11 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest run --exclude='**/*.integration.test.ts'",
+    "test": "vitest run --exclude=\"**/*.integration.test.ts\"",
     "test:all": "vitest run",
     "test:integration": "vitest run **/*.integration.test.ts",
     "test:watch": "vitest --exclude='**/*.integration.test.ts'",
-    "test:github-actions": "act -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest --secret-file .secrets"
+    "test:github-actions": "./.github/test-actions.sh all"
   },
   "files": [
     "dist"

@@ -77,12 +77,24 @@ jobs:
     - name: Create release branch
       run: |
         BRANCH_NAME="release/v${{ steps.bump.outputs.new-version }}"
+        # Delete branch if it exists (for testing)
+        if [ "$ACT" == "true" ] && git show-ref --verify --quiet refs/heads/$BRANCH_NAME; then
+          echo "🏃 Running in act - cleaning up existing branch"
+          git branch -D $BRANCH_NAME || true
+        fi
         git checkout -b $BRANCH_NAME
         git add package.json CHANGELOG.md
         git commit -m "chore: release v${{ steps.bump.outputs.new-version }}"
-        git push origin $BRANCH_NAME
+        # Skip git push when running locally with act
+        if [ "$ACT" != "true" ]; then
+          git push origin $BRANCH_NAME
+        else
+          echo "🏃 Running in act - skipping git push"
+          echo "📄 Would push branch: $BRANCH_NAME"
+        fi
     
     - name: Create Pull Request
+      if: env.ACT != 'true'
       uses: peter-evans/create-pull-request@v5
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -105,3 +117,14 @@ jobs:
           2. Create and push a tag: `git tag v${{ steps.bump.outputs.new-version }} && git push origin v${{ steps.bump.outputs.new-version }}`
           3. The release workflow will automatically publish to npm
         labels: release
+    
+    - name: Mock Pull Request Creation (act)
+      if: env.ACT == 'true'
+      run: |
+        echo "🏃 Running in act - mocking PR creation"
+        echo "🔄 Would create PR: Release v${{ steps.bump.outputs.new-version }}"
+        echo "📝 PR Description:"
+        echo "   - From version: ${{ steps.current-version.outputs.version }}"
+        echo "   - To version: ${{ steps.bump.outputs.new-version }}"
+        echo "   - Release notes: ${{ github.event.inputs.message }}"
+        echo "✅ Manual release workflow completed successfully in test mode"

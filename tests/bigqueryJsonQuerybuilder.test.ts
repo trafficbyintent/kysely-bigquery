@@ -1,6 +1,6 @@
 import { CompiledQuery } from 'kysely';
 import { describe, expect, test, vi } from 'vitest';
-import { BigQueryConnection } from '../src/BigQueryConnection';
+import { BigQueryConnection } from '../src/bigQueryConnection';
 import { BigQueryDialectConfig } from '../src';
 
 describe('BigQuery JSON Query Builder Handling', () => {

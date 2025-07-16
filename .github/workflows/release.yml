@@ -44,15 +44,27 @@ jobs:
         git config user.email github-actions@github.com
         git add package.json
         git commit -m "chore: bump version to ${{ github.event.inputs.version }}"
-        git push
+        # Skip git push when running locally with act
+        if [ "$ACT" != "true" ]; then
+          git push
+        else
+          echo "🏃 Running in act - skipping git push"
+        fi
     
     - name: Publish to npm
-      run: npm publish --access public
+      run: |
+        # Use dry-run when running locally with act
+        if [ "$ACT" == "true" ]; then
+          echo "🏃 Running in act - using npm publish --dry-run"
+          npm publish --dry-run --access public
+        else
+          npm publish --access public
+        fi
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     
     - name: Create GitHub Release
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && env.ACT != 'true'
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -65,3 +77,10 @@ jobs:
           See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
         draft: false
         prerelease: false
+    
+    - name: Mock GitHub Release (act)
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && env.ACT == 'true'
+      run: |
+        echo "🏃 Running in act - mocking GitHub release creation"
+        echo "📦 Would create release: ${{ github.ref }}"
+        echo "✅ Release workflow completed successfully in test mode"

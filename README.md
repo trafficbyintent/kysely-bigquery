@@ -409,3 +409,47 @@ These are BigQuery platform limitations that cannot be addressed by the dialect:
    - ARRAY types cannot contain NULL values
    - STRUCT fields have naming restrictions
    - JSON columns (native) require specific syntax that differs from standard JSON operations
+
+## Testing
+
+### Running Tests Locally
+
+```bash
+# Run unit tests
+npm test
+
+# Run all tests including integration tests
+npm run test:all
+
+# Run integration tests only
+npm run test:integration
+```
+
+### Testing GitHub Actions Locally
+
+This project includes comprehensive GitHub Actions testing using [act](https://github.com/nektos/act):
+
+```bash
+# Install act (macOS)
+brew install act
+
+# Test all workflows
+npm run test:github-actions
+
+# Test specific workflow
+./.github/test-actions.sh ci
+```
+
+#### Dry-Run Mode for Release Workflows
+
+When testing release workflows locally, operations that would affect external services automatically run in safe mode:
+
+- **NPM Publishing**: Uses `--dry-run` flag to simulate publishing without actually uploading
+- **Git Operations**: Skipped with informative messages showing what would be pushed
+- **GitHub Releases**: Mocked with detailed console output
+
+This allows you to fully test release workflows without accidental deployments.
+
+#### Apple Silicon Support
+
+The test scripts automatically detect Apple Silicon (M1/M2) Macs and configure the appropriate container architecture.
