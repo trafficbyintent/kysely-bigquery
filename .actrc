@@ -1,0 +1,21 @@
+# Configuration for act (GitHub Actions local runner)
+# These settings ensure act uses appropriate Docker images
+
+# Use medium-sized images by default (includes more tools)
+--platform ubuntu-latest=catthehacker/ubuntu:act-latest
+--platform ubuntu-22.04=catthehacker/ubuntu:act-22.04
+--platform ubuntu-20.04=catthehacker/ubuntu:act-20.04
+
+# Use Node.js specific images for better compatibility
+--platform node-18=node:18-buster
+--platform node-20=node:20-buster
+--platform node-22=node:22-buster
+
+# Default event type
+--eventpath .github/act-events/push.json
+
+# Reuse containers for faster subsequent runs
+--reuse
+
+# Pull images if not present
+--pull=true

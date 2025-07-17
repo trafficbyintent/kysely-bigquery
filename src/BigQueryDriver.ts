@@ -1,12 +1,15 @@
-import {
-  DatabaseConnection,
-  Driver
-} from 'kysely';
-import { BigQueryDialectConfig } from '.';
-import { BigQueryConnection } from './BigQueryConnection';
+import { DatabaseConnection, Driver } from 'kysely';
 
+import { BigQueryDialectConfig } from '.';
+import { BigQueryConnection } from './bigQueryConnection';
+
+/**
+ * BigQuery driver implementation for Kysely.
+ * 
+ * Manages connections to BigQuery.
+ */
 export class BigQueryDriver implements Driver {
-  #config: BigQueryDialectConfig;
+  readonly #config: BigQueryDialectConfig;
 
   constructor(config: BigQueryDialectConfig) {
     this.#config = config;
@@ -19,15 +22,15 @@ export class BigQueryDriver implements Driver {
   }
 
   async beginTransaction(conn: BigQueryConnection): Promise<void> {
-    return await conn.beginTransaction();
+    return conn.beginTransaction();
   }
 
   async commitTransaction(conn: BigQueryConnection): Promise<void> {
-    return await conn.commitTransaction();
+    return conn.commitTransaction();
   }
 
   async rollbackTransaction(conn: BigQueryConnection): Promise<void> {
-    return await conn.rollbackTransaction();
+    return conn.rollbackTransaction();
   }
 
   async releaseConnection(_conn: BigQueryConnection): Promise<void> {}

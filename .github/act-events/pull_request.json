@@ -1,0 +1,26 @@
+{
+  "pull_request": {
+    "number": 123,
+    "state": "open",
+    "title": "Test PR for CI",
+    "user": {
+      "login": "test-user"
+    },
+    "head": {
+      "ref": "feature-branch",
+      "sha": "1234567890123456789012345678901234567890"
+    },
+    "base": {
+      "ref": "main",
+      "sha": "0987654321098765432109876543210987654321"
+    }
+  },
+  "action": "opened",
+  "repository": {
+    "name": "kysely-bigquery",
+    "full_name": "trafficbyintent/kysely-bigquery",
+    "owner": {
+      "login": "trafficbyintent"
+    }
+  }
+}

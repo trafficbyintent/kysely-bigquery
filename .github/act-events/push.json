@@ -1,0 +1,30 @@
+{
+  "push": {
+    "ref": "refs/heads/main",
+    "before": "0000000000000000000000000000000000000000",
+    "after": "1234567890123456789012345678901234567890",
+    "repository": {
+      "name": "kysely-bigquery",
+      "full_name": "trafficbyintent/kysely-bigquery",
+      "owner": {
+        "name": "trafficbyintent",
+        "email": "dev@trafficbyintent.com"
+      }
+    },
+    "pusher": {
+      "name": "test-user",
+      "email": "test@example.com"
+    },
+    "sender": {
+      "login": "test-user",
+      "type": "User"
+    },
+    "head_commit": {
+      "message": "Test commit for CI",
+      "author": {
+        "name": "Test User",
+        "email": "test@example.com"
+      }
+    }
+  }
+}
