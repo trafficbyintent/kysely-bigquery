@@ -85,7 +85,7 @@ export class BigQueryConnection implements DatabaseConnection {
       const processedRows = Array.isArray(rows)
         ? rows.map((row) => {
             const processedRow: Record<string, unknown> = {};
-            for (const [key, value] of Object.entries(row as Record<string, unknown>)) {
+            for (const [key, value] of Object.entries(row as unknown as Record<string, unknown>)) {
               if (typeof value === 'string' && value.length > 0) {
                 /* Try to parse JSON strings */
                 try {
@@ -207,7 +207,7 @@ export class BigQueryConnection implements DatabaseConnection {
       });
     }
 
-    let stream;
+    let stream: NodeJS.ReadableStream;
     try {
       stream = this.#client.createQueryStream(options);
     } catch (error) {
@@ -221,7 +221,7 @@ export class BigQueryConnection implements DatabaseConnection {
       for await (const row of stream) {
         /* Process row to parse JSON strings */
         const processedRow: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(row as Record<string, unknown>)) {
+        for (const [key, value] of Object.entries(row as unknown as Record<string, unknown>)) {
           if (typeof value === 'string' && value.length > 0) {
             try {
               const trimmed = value.trim();
