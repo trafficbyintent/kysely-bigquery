@@ -4,9 +4,13 @@ dist
 .serviceAccount.json
 .secrets
 .act
+coverage
+*.lcov
 
 # Agent work files
 CLAUDE.md
-AGENT.md
-.TODOS.md
-.TODOS-USER.md
+TODOS.md
+TODOS_USER.md
+
+# PR description file
+.PULL_REQUEST_DESCRIPTION.md

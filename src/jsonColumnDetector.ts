@@ -1,11 +1,39 @@
-import { CompiledQuery } from 'kysely';
+import { type CompiledQuery } from 'kysely';
+
+/* Type definitions for internal query nodes */
+interface QueryNode {
+  kind: string;
+  into?: { table?: TableNode };
+  table?: { table?: TableNode };
+  columns?: ColumnNode[];
+  updates?: UpdateNode[];
+}
+
+interface TableNode {
+  kind: string;
+  schema?: { name: string };
+  identifier?: { name: string };
+  name?: string;
+}
+
+interface ColumnNode {
+  column?: { name: string };
+  name?: string;
+}
+
+interface UpdateNode {
+  column?: {
+    column?: { name: string };
+    name?: string;
+  };
+}
 
 /**
  * Helper class to detect JSON columns in BigQuery tables
  * This is used to automatically serialize JSON data when inserting/updating
  */
 export class JsonColumnDetector {
-  #jsonColumnCache: Map<string, Set<string>> = new Map();
+  readonly #jsonColumnCache = new Map<string, Set<string>>();
 
   /**
    * Register JSON columns for a table
@@ -32,8 +60,10 @@ export class JsonColumnDetector {
     columns?: string[];
     updateColumns?: string[];
   } {
-    const query = compiledQuery.query as any;
-    if (!query) return {};
+    const query = compiledQuery.query as QueryNode | undefined;
+    if (!query) {
+      return {};
+    }
 
     let tableName: string | undefined;
     let columns: string[] | undefined;
@@ -43,9 +73,9 @@ export class JsonColumnDetector {
     if (query.kind === 'InsertQueryNode' && query.into?.table) {
       tableName = this.extractTableName(query.into.table);
       if (query.columns) {
-        columns = query.columns.map((col: any) => 
-          col.column?.name || col.name
-        ).filter(Boolean);
+        columns = query.columns
+          .map((col) => col.column?.name || col.name)
+          .filter((name): name is string => Boolean(name));
       }
     }
 
@@ -53,9 +83,9 @@ export class JsonColumnDetector {
     if (query.kind === 'UpdateQueryNode' && query.table?.table) {
       tableName = this.extractTableName(query.table.table);
       if (query.updates) {
-        updateColumns = query.updates.map((update: any) => 
-          update.column?.column?.name || update.column?.name
-        ).filter(Boolean);
+        updateColumns = query.updates
+          .map((update) => update.column?.column?.name || update.column?.name)
+          .filter((name): name is string => Boolean(name));
       }
     }
 
@@ -64,19 +94,29 @@ export class JsonColumnDetector {
       columns?: string[];
       updateColumns?: string[];
     } = {};
-    
-    if (tableName !== undefined) result.tableName = tableName;
-    if (columns !== undefined) result.columns = columns;
-    if (updateColumns !== undefined) result.updateColumns = updateColumns;
-    
+
+    if (tableName !== undefined) {
+      result.tableName = tableName;
+    }
+    if (columns !== undefined) {
+      result.columns = columns;
+    }
+    if (updateColumns !== undefined) {
+      result.updateColumns = updateColumns;
+    }
+
     return result;
   }
 
   /**
    * Extract table name from table node
    */
-  private extractTableName(tableNode: any): string | undefined {
-    if (!tableNode) return undefined;
+  private extractTableName(tableNode: TableNode | undefined): string | undefined {
+    /* c8 ignore start */
+    if (!tableNode) {
+      return undefined;
+    }
+    /* c8 ignore stop */
 
     /* Handle SchemableIdentifierNode */
     if (tableNode.kind === 'SchemableIdentifierNode') {
@@ -90,7 +130,9 @@ export class JsonColumnDetector {
       return tableNode.name;
     }
 
+    /* c8 ignore start - defensive fallback for unrecognized node types */
     return undefined;
+    /* c8 ignore stop */
   }
 
   /**
@@ -118,28 +160,34 @@ export class JsonColumnDetector {
     ];
 
     const lowerColumnName = columnName.toLowerCase();
-    return jsonColumnPatterns.some(pattern => 
-      lowerColumnName === pattern || 
-      lowerColumnName.endsWith(`_${pattern}`) ||
-      lowerColumnName.startsWith(`${pattern}_`)
+    return jsonColumnPatterns.some(
+      (pattern) =>
+        lowerColumnName === pattern ||
+        lowerColumnName.endsWith(`_${pattern}`) ||
+        lowerColumnName.startsWith(`${pattern}_`),
     );
   }
 
   /**
-   * Process parameters for JSON serialization based on the query
+   * Process parameters for JSON serialization based on the query.
+   * @param compiledQuery - The compiled query containing column information
+   * @param params - The query parameters to process
+   * @returns Processed parameters with JSON objects stringified as needed
    */
-  processParameters(compiledQuery: CompiledQuery, params: readonly any[]): any[] {
+  processParameters<T = unknown>(compiledQuery: CompiledQuery, params: readonly T[]): T[] {
     const { tableName, columns, updateColumns } = this.extractTableAndColumns(compiledQuery);
-    
-    if (!tableName) return [...params];
 
-    const processedParams = [...params];
-    
+    if (!tableName) {
+      return [...params] as T[];
+    }
+
+    const processedParams = [...params] as T[];
+
     /* For INSERT queries */
     if (columns && columns.length === params.length) {
       columns.forEach((col, index) => {
         if (this.shouldSerializeJson(tableName, col, params[index])) {
-          processedParams[index] = JSON.stringify(params[index]);
+          processedParams[index] = JSON.stringify(params[index]) as T;
         }
       });
     }
@@ -150,12 +198,14 @@ export class JsonColumnDetector {
       let paramIndex = 0;
       const updatePattern = /SET\s+(.+?)\s+WHERE/i;
       const match = compiledQuery.sql.match(updatePattern);
-      
+
       if (match) {
         updateColumns.forEach((col) => {
-          if (paramIndex < params.length && 
-              this.shouldSerializeJson(tableName, col, params[paramIndex])) {
-            processedParams[paramIndex] = JSON.stringify(params[paramIndex]);
+          if (
+            paramIndex < params.length &&
+            this.shouldSerializeJson(tableName, col, params[paramIndex])
+          ) {
+            processedParams[paramIndex] = JSON.stringify(params[paramIndex]) as T;
           }
           paramIndex++;
         });
@@ -168,22 +218,32 @@ export class JsonColumnDetector {
   /**
    * Determine if a value should be serialized as JSON
    */
-  private shouldSerializeJson(tableName: string, columnName: string, value: any): boolean {
+  private shouldSerializeJson(tableName: string, columnName: string, value: unknown): boolean {
     /* Don't serialize null values */
-    if (value === null || value === undefined) return false;
+    if (value === null || value === undefined) {
+      return false;
+    }
 
     /* Don't serialize non-objects */
-    if (typeof value !== 'object') return false;
+    if (typeof value !== 'object') {
+      return false;
+    }
 
     /* Don't serialize Date or Buffer objects */
-    if (value instanceof Date || value instanceof Buffer) return false;
+    if (value instanceof Date || value instanceof Buffer) {
+      return false;
+    }
 
     /* Check if column is registered as JSON */
-    if (this.isJsonColumn(tableName, columnName)) return true;
+    if (this.isJsonColumn(tableName, columnName)) {
+      return true;
+    }
 
-    /* Don't use naming convention for automatic serialization
+    /*
+     * Don't use naming convention for automatic serialization
      * Only serialize if explicitly registered to avoid breaking STRUCT columns
-     * Users can register columns if they want automatic serialization */
+     * Users can register columns if they want automatic serialization
+     */
 
     return false;
   }

@@ -67,6 +67,19 @@ This directory contains GitHub Actions workflows and related configuration for c
 
 To enable full CI functionality, configure these secrets in your repository settings:
 
+#### GitHub Packages Access (Organization Setup)
+
+This project uses `@trafficbyintent/style-guide` from GitHub Packages. Since this repository is in the @trafficbyintent organization, it should have access automatically.
+
+**If you see E403 errors**, check:
+1. **Repository Settings** → Actions → General → Workflow permissions
+   - Should be set to "Read and write permissions" or at least "Read repository contents and packages"
+2. **Organization Settings** → Packages → Package settings
+   - The style-guide package should grant access to this repository
+3. **The style-guide package visibility**
+   - If it's "Internal", this repo needs to be in the same organization
+   - If it's "Private", this repo needs explicit access
+
 #### 1. NPM_TOKEN (Required for Publishing)
 
 To publish packages to npm, you need to create an NPM access token:

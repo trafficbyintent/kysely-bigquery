@@ -1,11 +1,12 @@
-import { DatabaseConnection, Driver } from 'kysely';
+import { type DatabaseConnection, type Driver } from 'kysely';
 
-import { BigQueryDialectConfig } from '.';
-import { BigQueryConnection } from './bigQueryConnection';
+import { BigQueryConnection } from './BigQueryConnection';
+
+import { type BigQueryDialectConfig } from '.';
 
 /**
  * BigQuery driver implementation for Kysely.
- * 
+ *
  * Manages connections to BigQuery.
  */
 export class BigQueryDriver implements Driver {
@@ -15,10 +16,12 @@ export class BigQueryDriver implements Driver {
     this.#config = config;
   }
 
-  async init(): Promise<void> {}
+  init(): Promise<void> {
+    return Promise.resolve();
+  }
 
-  async acquireConnection(): Promise<DatabaseConnection> {
-    return new BigQueryConnection(this.#config);
+  acquireConnection(): Promise<DatabaseConnection> {
+    return Promise.resolve(new BigQueryConnection(this.#config));
   }
 
   async beginTransaction(conn: BigQueryConnection): Promise<void> {
@@ -33,7 +36,11 @@ export class BigQueryDriver implements Driver {
     return conn.rollbackTransaction();
   }
 
-  async releaseConnection(_conn: BigQueryConnection): Promise<void> {}
+  releaseConnection(_conn: BigQueryConnection): Promise<void> {
+    return Promise.resolve();
+  }
 
-  async destroy(): Promise<void> {}
+  destroy(): Promise<void> {
+    return Promise.resolve();
+  }
 }

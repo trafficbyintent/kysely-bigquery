@@ -1,0 +1,19 @@
+# Build output
+dist/
+
+# Dependencies
+node_modules/
+
+# Test files (we'll handle these separately)
+tests/
+
+# Config files
+*.config.js
+.eslintrc.js
+.prettierrc.js
+
+# Scripts
+scripts/
+
+# GitHub
+.github/

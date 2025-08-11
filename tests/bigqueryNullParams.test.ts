@@ -94,4 +94,112 @@ describe('BigQuery Null Parameter Handling', () => {
       'BigQuery query failed: Parameter types must be provided for null values'
     );
   });
+
+  test('should handle boolean parameters with type detection', async () => {
+    mockQuery.mockResolvedValue([[]]);
+
+    const compiledQuery = CompiledQuery.raw(
+      'UPDATE users SET active = ?, verified = ? WHERE id = ?',
+      [true, false, 123]
+    );
+
+    await connection.executeQuery(compiledQuery);
+
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: 'UPDATE users SET active = ?, verified = ? WHERE id = ?',
+      params: [true, false, 123],
+    });
+  });
+
+  test('should handle Buffer parameters with type detection', async () => {
+    mockQuery.mockResolvedValue([[]]);
+
+    const buffer = Buffer.from('binary data');
+    const compiledQuery = CompiledQuery.raw(
+      'INSERT INTO files (data, checksum) VALUES (?, ?)',
+      [buffer, null]
+    );
+
+    await connection.executeQuery(compiledQuery);
+
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: 'INSERT INTO files (data, checksum) VALUES (?, ?)',
+      params: [buffer, null],
+      types: ['BYTES', 'STRING']
+    });
+  });
+
+  test('should handle object parameters with type detection', async () => {
+    mockQuery.mockResolvedValue([[]]);
+
+    const jsonData = { key: 'value' };
+    const arrayData = [1, 2, 3];
+    const compiledQuery = CompiledQuery.raw(
+      'INSERT INTO data_table (json_col, array_col, null_col) VALUES (?, ?, ?)',
+      [jsonData, arrayData, null]
+    );
+
+    await connection.executeQuery(compiledQuery);
+
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: 'INSERT INTO data_table (json_col, array_col, null_col) VALUES (?, ?, ?)',
+      params: [jsonData, arrayData, null],
+      types: ['JSON', 'JSON', 'STRING']
+    });
+  });
+
+  test('should handle mixed parameter types including all edge cases', async () => {
+    mockQuery.mockResolvedValue([[]]);
+
+    const buffer = Buffer.from('test');
+    const date = new Date('2024-01-01');
+    const object = { nested: true };
+    
+    const compiledQuery = CompiledQuery.raw(
+      'INSERT INTO complex_table VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['string', 42, true, date, buffer, object, null]
+    );
+
+    await connection.executeQuery(compiledQuery);
+
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: 'INSERT INTO complex_table VALUES (?, ?, ?, ?, ?, ?, ?)',
+      params: ['string', 42, true, date, buffer, object, null],
+      types: ['STRING', 'INT64', 'BOOL', 'TIMESTAMP', 'BYTES', 'JSON', 'STRING']
+    });
+  });
+
+  test('should handle floating point numbers with FLOAT64 type detection', async () => {
+    mockQuery.mockResolvedValue([[]]);
+
+    const compiledQuery = CompiledQuery.raw(
+      'INSERT INTO measurements (value, price, ratio) VALUES (?, ?, ?)',
+      [3.14159, 99.99, null]
+    );
+
+    await connection.executeQuery(compiledQuery);
+
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: 'INSERT INTO measurements (value, price, ratio) VALUES (?, ?, ?)',
+      params: [3.14159, 99.99, null],
+      types: ['FLOAT64', 'FLOAT64', 'STRING']
+    });
+  });
+
+  test('should distinguish between integers and floats in type detection', async () => {
+    mockQuery.mockResolvedValue([[]]);
+
+    const compiledQuery = CompiledQuery.raw(
+      'UPDATE stats SET count = ?, average = ?, total = ? WHERE id = ?',
+      [100, 75.5, 0.1, null]
+    );
+
+    await connection.executeQuery(compiledQuery);
+
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: 'UPDATE stats SET count = ?, average = ?, total = ? WHERE id = ?',
+      params: [100, 75.5, 0.1, null],
+      types: ['INT64', 'FLOAT64', 'FLOAT64', 'STRING']
+    });
+  });
 });

@@ -6,7 +6,37 @@ on:
   pull_request:
     branches: [ main, master, develop ]
 
+permissions:
+  contents: read
+  packages: read
+  actions: read
+
 jobs:
+  lint-required:
+    name: Lint Check (Required)
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+        registry-url: 'https://npm.pkg.github.com'
+    
+    - name: Install dependencies
+      run: npm ci
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Run ESLint
+      run: npm run lint
+    
+    - name: Check formatting
+      run: npm run format:check
+
   test:
     runs-on: ubuntu-latest
     
@@ -22,9 +52,12 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+        registry-url: 'https://npm.pkg.github.com'
     
     - name: Install dependencies
       run: npm ci
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Build
       run: npm run build

@@ -45,7 +45,7 @@ describe('BigQuery Streaming', () => {
       },
     });
 
-    mockCreateQueryStream.mockResolvedValue(mockStream);
+    mockCreateQueryStream.mockReturnValue(mockStream);
 
     const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
 
@@ -75,7 +75,7 @@ describe('BigQuery Streaming', () => {
       },
     });
 
-    mockCreateQueryStream.mockResolvedValue(mockStream);
+    mockCreateQueryStream.mockReturnValue(mockStream);
 
     const compiledQuery = CompiledQuery.raw('SELECT * FROM users WHERE 1=0', []);
 
@@ -90,7 +90,9 @@ describe('BigQuery Streaming', () => {
   });
 
   test('streamQuery handles stream creation errors', async () => {
-    mockCreateQueryStream.mockRejectedValue(new Error('Failed to create stream'));
+    mockCreateQueryStream.mockImplementation(() => {
+      throw new Error('Failed to create stream');
+    });
 
     const compiledQuery = CompiledQuery.raw('SELECT * FROM invalid_table', []);
 
@@ -119,7 +121,7 @@ describe('BigQuery Streaming', () => {
       },
     });
 
-    mockCreateQueryStream.mockResolvedValue(mockStream);
+    mockCreateQueryStream.mockReturnValue(mockStream);
 
     const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
 
@@ -145,7 +147,7 @@ describe('BigQuery Streaming', () => {
       },
     });
 
-    mockCreateQueryStream.mockResolvedValue(mockStream);
+    mockCreateQueryStream.mockReturnValue(mockStream);
 
     const compiledQuery = CompiledQuery.raw('SELECT * FROM users WHERE age > ?', [21]);
 
@@ -164,7 +166,9 @@ describe('BigQuery Streaming', () => {
   });
 
   test('streamQuery handles non-Error exceptions', async () => {
-    mockCreateQueryStream.mockRejectedValue('String error');
+    mockCreateQueryStream.mockImplementation(() => {
+      throw 'String error';
+    });
 
     const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
 
@@ -186,5 +190,250 @@ describe('BigQuery Streaming', () => {
     const query = kysely.selectFrom('users').selectAll();
     expect(query.stream).toBeDefined();
     expect(typeof query.stream).toBe('function');
+  });
+
+  test('streamQuery handles JSON parsing in results', async () => {
+    const testRows = [
+      { id: 1, metadata: '{"role": "admin", "permissions": ["read", "write"]}' },
+      { id: 2, metadata: '[1, 2, 3]' },
+      { id: 3, metadata: 'not json' }, /* Should not be parsed */
+    ];
+
+    const mockStream = new Readable({
+      objectMode: true,
+      read() {
+        if (testRows.length > 0) {
+          this.push(testRows.shift());
+        } else {
+          this.push(null);
+        }
+      },
+    });
+
+    mockCreateQueryStream.mockReturnValue(mockStream);
+
+    const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
+    const results: any[] = [];
+    const stream = connection.streamQuery(compiledQuery, 1);
+
+    for await (const result of stream) {
+      results.push(result);
+    }
+
+    /* JSON strings should be parsed */
+    expect(results[0].rows[0].metadata).toEqual({ role: 'admin', permissions: ['read', 'write'] });
+    expect(results[1].rows[0].metadata).toEqual([1, 2, 3]);
+    expect(results[2].rows[0].metadata).toBe('not json');
+  });
+
+  test('streamQuery handles JSON parse errors gracefully', async () => {
+    const testRows = [
+      { id: 1, data: '{invalid json' }, /* Malformed JSON */
+      { id: 2, data: '{truncated: ' }, /* Incomplete JSON */
+    ];
+
+    const mockStream = new Readable({
+      objectMode: true,
+      read() {
+        if (testRows.length > 0) {
+          this.push(testRows.shift());
+        } else {
+          this.push(null);
+        }
+      },
+    });
+
+    mockCreateQueryStream.mockReturnValue(mockStream);
+
+    const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
+    const results: any[] = [];
+    const stream = connection.streamQuery(compiledQuery, 1);
+
+    for await (const result of stream) {
+      results.push(result);
+    }
+
+    /* Malformed JSON should remain as strings */
+    expect(results[0].rows[0].data).toBe('{invalid json');
+    expect(results[1].rows[0].data).toBe('{truncated: ');
+  });
+
+  test('streamQuery handles non-Error exceptions in stream', async () => {
+    let pushed = false;
+    const mockStream = new Readable({
+      objectMode: true,
+      read() {
+        if (!pushed) {
+          this.push({ id: 1, name: 'Test' });
+          pushed = true;
+          process.nextTick(() => {
+            /* Emit non-Error exception */
+            this.destroy('String error in stream' as any);
+          });
+        }
+      },
+    });
+
+    mockCreateQueryStream.mockReturnValue(mockStream);
+
+    const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
+    const stream = connection.streamQuery(compiledQuery, 1);
+
+    await expect(async () => {
+      for await (const _ of stream) {
+        /* Should throw */
+      }
+    }).rejects.toBe('String error in stream');
+  });
+
+  test('streamQuery handles null parameters with type detection', async () => {
+    const testRows = [{ id: 1, name: 'Test' }];
+
+    const mockStream = new Readable({
+      objectMode: true,
+      read() {
+        if (testRows.length > 0) {
+          this.push(testRows.shift());
+        } else {
+          this.push(null);
+        }
+      },
+    });
+
+    mockCreateQueryStream.mockReturnValue(mockStream);
+
+    const compiledQuery = CompiledQuery.raw(
+      'SELECT * FROM users WHERE email = ? OR status = ?',
+      [null, 'active']
+    );
+
+    const results: any[] = [];
+    const stream = connection.streamQuery(compiledQuery, 10);
+
+    for await (const result of stream) {
+      results.push(result);
+    }
+
+    expect(mockCreateQueryStream).toHaveBeenCalledWith({
+      query: 'SELECT * FROM users WHERE email = ? OR status = ?',
+      params: [null, 'active'],
+      types: ['STRING', 'STRING']
+    });
+  });
+
+  test('streamQuery handles all parameter types with null values', async () => {
+    const testRows = [{ id: 1 }];
+
+    const mockStream = new Readable({
+      objectMode: true,
+      read() {
+        if (testRows.length > 0) {
+          this.push(testRows.shift());
+        } else {
+          this.push(null);
+        }
+      },
+    });
+
+    mockCreateQueryStream.mockReturnValue(mockStream);
+
+    const buffer = Buffer.from('test');
+    const date = new Date('2024-01-01');
+    const compiledQuery = CompiledQuery.raw(
+      'INSERT INTO test_table VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['string', 42, true, date, buffer, { key: 'value' }, null]
+    );
+
+    const results: any[] = [];
+    const stream = connection.streamQuery(compiledQuery, 10);
+
+    for await (const result of stream) {
+      results.push(result);
+    }
+
+    expect(mockCreateQueryStream).toHaveBeenCalledWith({
+      query: 'INSERT INTO test_table VALUES (?, ?, ?, ?, ?, ?, ?)',
+      params: ['string', 42, true, date, buffer, { key: 'value' }, null],
+      types: ['STRING', 'INT64', 'BOOL', 'TIMESTAMP', 'BYTES', 'JSON', 'STRING']
+    });
+  });
+
+  test('streamQuery handles floating point numbers with FLOAT64 type detection', async () => {
+    const testRows = [{ id: 1 }];
+
+    const mockStream = new Readable({
+      objectMode: true,
+      read() {
+        if (testRows.length > 0) {
+          this.push(testRows.shift());
+        } else {
+          this.push(null);
+        }
+      },
+    });
+
+    mockCreateQueryStream.mockReturnValue(mockStream);
+
+    const compiledQuery = CompiledQuery.raw(
+      'SELECT * FROM measurements WHERE value > ? AND price < ? AND ratio = ?',
+      [3.14159, 99.99, null]
+    );
+
+    const results: any[] = [];
+    const stream = connection.streamQuery(compiledQuery, 10);
+
+    for await (const result of stream) {
+      results.push(result);
+    }
+
+    expect(mockCreateQueryStream).toHaveBeenCalledWith({
+      query: 'SELECT * FROM measurements WHERE value > ? AND price < ? AND ratio = ?',
+      params: [3.14159, 99.99, null],
+      types: ['FLOAT64', 'FLOAT64', 'STRING']
+    });
+  });
+
+  test('streamQuery handles JSON parse errors in likely JSON columns', async () => {
+    /* Create rows with JSON-like column names that will trigger the JSON parsing attempt */
+    const testRows = [
+      { 
+        id: 1, 
+        metadata: '{"valid": "json"}',
+        /* This string will cause JSON.parse to throw */
+        settings: '{"malformed": json}'
+      }
+    ];
+
+    const mockStream = new Readable({
+      objectMode: true,
+      read() {
+        if (testRows.length > 0) {
+          this.push(testRows.shift());
+        } else {
+          this.push(null);
+        }
+      },
+    });
+
+    mockCreateQueryStream.mockReturnValue(mockStream);
+
+    /* Create connection that will try to parse likely JSON columns */
+    const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
+
+    const results: any[] = [];
+    const stream = connection.streamQuery(compiledQuery, 10);
+
+    for await (const result of stream) {
+      results.push(result);
+    }
+
+    expect(results).toHaveLength(1);
+    const row = results[0].rows[0];
+    
+    /* Valid JSON strings should be parsed */
+    expect(row.metadata).toEqual({ valid: 'json' });
+    
+    /* Malformed JSON should remain as string (catch block coverage) */
+    expect(row.settings).toBe('{"malformed": json}');
   });
 });
