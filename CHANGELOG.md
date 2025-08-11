@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.3] - 2025-08-11
+
+### Fixed
+- Fixed TypeScript import errors in CI/CD
+- Corrected import paths for BigQueryDialectConfig
+- Added proper type exports to index.ts
+- Fixed type assertion for jsonColumns parameter
+
 ## [1.4.2] - 2025-08-11
 
 ### Fixed
@@ -75,7 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Forked from @maktouch/kysely-bigquery
 - Restructured for TXI coding standards
 
-[Unreleased]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.2...HEAD
+[Unreleased]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.3...HEAD
+[1.4.3]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.3.1...v1.4.0
