@@ -69,7 +69,14 @@ To enable full CI functionality, configure these secrets in your repository sett
 
 #### Note on GitHub Packages Authentication
 
-This project uses `@trafficbyintent/style-guide` from GitHub Packages. The CI workflows are configured to use `GITHUB_TOKEN` automatically for authentication, so no additional setup is needed for basic CI/CD.
+This project uses `@trafficbyintent/style-guide` from GitHub Packages. The CI workflows are configured to use `GITHUB_TOKEN` automatically for authentication.
+
+**Important**: If you see E403 errors in CI, it might be because:
+1. The workflow is running from a fork (forks don't have access to organization packages)
+2. The repository needs to be part of the @trafficbyintent organization
+3. The package might need to be made public or the repository needs package access permissions
+
+For local development, you'll need a GitHub Personal Access Token with `read:packages` scope.
 
 #### 1. NPM_TOKEN (Required for Publishing)
 
