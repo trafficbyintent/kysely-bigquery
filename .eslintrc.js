@@ -1,39 +1,15 @@
-let baseConfig = {};
-
-try {
-  /* Try to use the style guide if available */
-  const { getESLintConfig } = require('@trafficbyintent/style-guide/typescript');
-  baseConfig = getESLintConfig({
-    allowConsoleError: true,
-    allowConsoleWarn: true,
-  });
-} catch (error) {
-  /* Fallback to basic ESLint configuration if style-guide is not available */
-  baseConfig = {
-    root: true,
-    parser: '@typescript-eslint/parser',
-    plugins: ['@typescript-eslint'],
-    extends: [
-      'eslint:recommended',
-      'plugin:@typescript-eslint/recommended',
-      'plugin:@typescript-eslint/recommended-requiring-type-checking',
-    ],
-    env: {
-      node: true,
-      es2021: true,
-    },
-  };
-}
+const { getESLintConfig } = require('@trafficbyintent/style-guide/typescript');
 
 module.exports = {
-  ...baseConfig,
+  ...getESLintConfig({
+    allowConsoleError: true,
+    allowConsoleWarn: true,
+  }),
   parserOptions: {
     project: './tsconfig.json',
-    ...(baseConfig.parserOptions || {}),
   },
   rules: {
-    ...(baseConfig.rules || {}),
-    /* Temporarily disable import rules due to resolver conflicts */
+    // Temporarily disable import rules due to resolver conflicts
     'import/no-unresolved': 'off',
     'import/namespace': 'off',
     'import/no-duplicates': 'off',
@@ -43,7 +19,7 @@ module.exports = {
     'import/no-named-as-default': 'off',
     'import/no-named-as-default-member': 'off',
     
-    /* TypeScript rules - changed from warn to error for TXI compliance */
+    // TypeScript rules - changed from warn to error for TXI compliance
     '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/no-unsafe-assignment': 'error',
     '@typescript-eslint/no-unsafe-member-access': 'error',
@@ -57,7 +33,7 @@ module.exports = {
     '@typescript-eslint/await-thenable': 'error',
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     
-    /* Comment style - enforce multi-line comments per TXI standards */
+    // Comment style - enforce multi-line comments per TXI standards
     'multiline-comment-style': ['error', 'starred-block'],
   },
 };

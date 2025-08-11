@@ -104,7 +104,8 @@ export class BigQueryDialect implements Dialect {
     /* Validate BigQuery options if provided */
     if (config.options) {
       /* Ensure projectId is provided when using options */
-      if (!config.options.projectId && !process.env.GOOGLE_CLOUD_PROJECT) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+      if (!config.options.projectId && !(process as any).env['GOOGLE_CLOUD_PROJECT']) {
         throw new Error(
           'BigQuery projectId is required. Provide it in options.projectId or set GOOGLE_CLOUD_PROJECT environment variable.',
         );
@@ -114,7 +115,8 @@ export class BigQueryDialect implements Dialect {
       if (
         !config.options.keyFilename &&
         !config.options.credentials &&
-        !process.env.GOOGLE_APPLICATION_CREDENTIALS
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+        !(process as any).env['GOOGLE_APPLICATION_CREDENTIALS']
       ) {
         /* Authentication will fall back to Application Default Credentials */
       }

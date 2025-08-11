@@ -1,10 +1,30 @@
-# @traffic.by.intent/kysely-bigquery
+# @trafficbyintent/kysely-bigquery
 
 [Kysely](https://github.com/koskimas/kysely) adapter for [BigQuery](https://cloud.google.com/bigquery?hl=en).
 
-```bash
-npm i @google-cloud/bigquery @traffic.by.intent/kysely-bigquery
+## Installation
+
+This is a private package hosted on GitHub Packages. To install:
+
+1. Create a `.npmrc` file in your project root with:
 ```
+@trafficbyintent:registry=https://npm.pkg.github.com
+```
+
+2. Authenticate with GitHub Packages (one-time setup):
+```bash
+npm login --registry=https://npm.pkg.github.com --scope=@trafficbyintent
+# Username: YOUR_GITHUB_USERNAME
+# Password: YOUR_GITHUB_PERSONAL_ACCESS_TOKEN (with read:packages scope)
+# Email: YOUR_EMAIL
+```
+
+3. Install the package:
+```bash
+npm i @google-cloud/bigquery @trafficbyintent/kysely-bigquery
+```
+
+For CI/CD environments, set the `NODE_AUTH_TOKEN` environment variable to a GitHub token with `read:packages` permission.
 
 This project was largely adapted from [kysely-planetscale](https://github.com/depot/kysely-planetscale) and forked from [@maktouch/kysely-bigquery](https://github.com/maktouch/kysely-bigquery).
 
@@ -21,7 +41,7 @@ Follow [these docs](https://www.npmjs.com/package/@google-cloud/bigquery) for in
 
 ```typescript
 import { Kysely } from 'kysely';
-import { BigQueryDialect } from '@traffic.by.intent/kysely-bigquery';
+import { BigQueryDialect } from '@trafficbyintent/kysely-bigquery';
 
 interface SomeTable {
   key: string;

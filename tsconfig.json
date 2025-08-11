@@ -1,14 +1,9 @@
 {
-  "extends": "./tsconfig.base.json",
+  "extends": "@trafficbyintent/style-guide/typescript/tsconfig",
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist"
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }
