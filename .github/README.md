@@ -67,16 +67,18 @@ This directory contains GitHub Actions workflows and related configuration for c
 
 To enable full CI functionality, configure these secrets in your repository settings:
 
-#### Note on GitHub Packages Authentication
+#### GitHub Packages Access (Organization Setup)
 
-This project uses `@trafficbyintent/style-guide` from GitHub Packages. The CI workflows are configured to use `GITHUB_TOKEN` automatically for authentication.
+This project uses `@trafficbyintent/style-guide` from GitHub Packages. Since this repository is in the @trafficbyintent organization, it should have access automatically.
 
-**Important**: If you see E403 errors in CI, it might be because:
-1. The workflow is running from a fork (forks don't have access to organization packages)
-2. The repository needs to be part of the @trafficbyintent organization
-3. The package might need to be made public or the repository needs package access permissions
-
-For local development, you'll need a GitHub Personal Access Token with `read:packages` scope.
+**If you see E403 errors**, check:
+1. **Repository Settings** → Actions → General → Workflow permissions
+   - Should be set to "Read and write permissions" or at least "Read repository contents and packages"
+2. **Organization Settings** → Packages → Package settings
+   - The style-guide package should grant access to this repository
+3. **The style-guide package visibility**
+   - If it's "Internal", this repo needs to be in the same organization
+   - If it's "Private", this repo needs explicit access
 
 #### 1. NPM_TOKEN (Required for Publishing)
 
