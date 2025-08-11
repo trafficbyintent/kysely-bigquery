@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - Removed unused bluebird dependency
+- Removed unused @types/bluebird devDependency
+- Removed manual BigQuery setup script (tests are now self-contained)
 
 ## [1.3.1] - 2024-12-15
 

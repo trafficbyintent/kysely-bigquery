@@ -67,6 +67,10 @@ This directory contains GitHub Actions workflows and related configuration for c
 
 To enable full CI functionality, configure these secrets in your repository settings:
 
+#### Note on GitHub Packages Authentication
+
+This project uses `@trafficbyintent/style-guide` from GitHub Packages. The CI workflows are configured to use `GITHUB_TOKEN` automatically for authentication, so no additional setup is needed for basic CI/CD.
+
 #### 1. NPM_TOKEN (Required for Publishing)
 
 To publish packages to npm, you need to create an NPM access token:

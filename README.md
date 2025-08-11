@@ -8,6 +8,11 @@ npm i @google-cloud/bigquery @traffic.by.intent/kysely-bigquery
 
 This project was largely adapted from [kysely-planetscale](https://github.com/depot/kysely-planetscale) and forked from [@maktouch/kysely-bigquery](https://github.com/maktouch/kysely-bigquery).
 
+## Requirements
+
+- Node.js 18+ (tested with 18.x, 20.x, 22.x)
+- BigQuery project with appropriate permissions
+
 ## Usage
 
 Pass your BigQuery connection options, a BigQuery instance, a Dataset instance, or a Table instance into the dialect in
