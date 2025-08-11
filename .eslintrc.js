@@ -8,17 +8,14 @@ module.exports = {
   parserOptions: {
     project: './tsconfig.json',
   },
+  settings: {
+    'import/resolver': {
+      typescript: {
+        project: './tsconfig.json',
+      },
+    },
+  },
   rules: {
-    // Temporarily disable import rules due to resolver conflicts
-    'import/no-unresolved': 'off',
-    'import/namespace': 'off',
-    'import/no-duplicates': 'off',
-    'import/order': 'off',
-    'import/default': 'off',
-    'import/export': 'off',
-    'import/no-named-as-default': 'off',
-    'import/no-named-as-default-member': 'off',
-    
     // TypeScript rules - changed from warn to error for TXI compliance
     '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/no-unsafe-assignment': 'error',

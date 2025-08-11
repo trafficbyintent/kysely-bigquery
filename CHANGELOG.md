@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Version bump for GitHub Packages release
+- Updated @types/node from ^20.10.0 to ^20.19.10 for better type definitions
+
+### Fixed
+- Resolved ESLint import resolver configuration issues
+- Re-enabled all ESLint import rules by adding eslint-import-resolver-typescript
+- Fixed tsconfig.json to properly extend style-guide configuration
 
 ## [1.4.0] - 2024-08-11
 
