@@ -21,7 +21,7 @@ export class BigQueryConnection implements DatabaseConnection {
     /* Register known JSON columns if provided in config */
     if (config.jsonColumns) {
       for (const [tableName, columns] of Object.entries(config.jsonColumns)) {
-        this.#jsonDetector.registerJsonColumns(tableName, columns as string[]);
+        this.#jsonDetector.registerJsonColumns(tableName, columns);
       }
     }
   }
