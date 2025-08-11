@@ -92,6 +92,7 @@ afterAll(async () => {
     await cleanupTestTable(kysely, 'test_dataset', 'test_users');
     await cleanupTestTable(kysely, 'test_dataset', 'test_products');
     await cleanupTestTable(kysely, 'test_dataset', 'test_orders');
+    await cleanupTestTable(kysely, 'test_dataset', 'test_metadata');
   } catch (error) {
     console.error('Failed to cleanup test tables:', error);
   }

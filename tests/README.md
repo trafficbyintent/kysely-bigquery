@@ -77,7 +77,12 @@ Integration tests require access to a BigQuery instance. Follow these steps to s
 ## Test Structure
 
 - `bigquery.test.ts` - Unit tests with mocked BigQuery client (includes constraint tests)
-- `bigquery.integration.test.ts` - Integration tests requiring BigQuery connection (includes MySQL vs BigQuery differences)
+- `bigquery.integration.test.ts` - Integration tests with real BigQuery (self-contained, no setup required)
+- `bigqueryAdapter.test.ts` - Adapter unit tests
+- `bigqueryConnection.test.ts` - Connection unit tests
+- `bigqueryIntrospector.test.ts` - Introspector unit tests
+- `jsonColumnDetector.test.ts` - JSON column detection unit tests
+- Additional JSON and null parameter test files
 - `config.ts` - Shared test configuration
 - `helpers.ts` - Test utilities and fixtures
 
@@ -87,8 +92,8 @@ Integration tests require access to a BigQuery instance. Follow these steps to s
 
 1. **"Table not found" errors**
    - Ensure your service account has BigQuery Admin permissions
-   - Run the setup script to create required datasets
    - Check that `GCP_PROJECT_ID` matches your actual project
+   - Integration tests create their own tables automatically
 
 2. **Authentication errors**
    - Verify `GOOGLE_APPLICATION_CREDENTIALS` points to a valid service account key
