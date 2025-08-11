@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.4] - 2025-08-11
+
+### Fixed
+- Fixed CI workflow authentication for GitHub Packages
+- Corrected ESLint configuration for proper type checking
+- Fixed formatting in BigQueryIntrospector.ts
+
 ## [1.4.3] - 2025-08-11
 
 ### Fixed

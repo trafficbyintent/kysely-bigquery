@@ -1,6 +1,6 @@
 {
   "name": "@trafficbyintent/kysely-bigquery",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "BigQuery Dialect for Kysely",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

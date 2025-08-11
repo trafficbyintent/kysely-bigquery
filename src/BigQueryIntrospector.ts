@@ -56,7 +56,7 @@ export class BigQueryIntrospector implements DatabaseIntrospector {
         /* The schema is constructed from dataset IDs retrieved from BigQuery */
         /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
         const query = this.#db.selectFrom(from as any);
-        const rows = await (query as any).selectAll().execute() as BigQueryInformationSchema[];
+        const rows = (await (query as any).selectAll().execute()) as BigQueryInformationSchema[];
         /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
         for (const row of rows) {
