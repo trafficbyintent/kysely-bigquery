@@ -24,6 +24,7 @@ jobs:
           node-version: '20'
           registry-url: 'https://npm.pkg.github.com'
           scope: '@trafficbyintent'
+          always-auth: true
       
       - name: Install dependencies
         run: npm ci
