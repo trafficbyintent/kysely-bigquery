@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.2] - 2025-08-11
+
+### Fixed
+- Resolved merge conflicts with upstream/main
+- Improved GitHub Actions authentication for private packages
+- Updated dependencies and configurations
+
 ## [1.4.1] - 2025-08-11
 
 ### Changed
@@ -68,7 +75,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Forked from @maktouch/kysely-bigquery
 - Restructured for TXI coding standards
 
-[Unreleased]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.2...HEAD
+[1.4.2]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.3.0...v1.3.1
