@@ -3,7 +3,7 @@ import { type CompiledQuery, type DatabaseConnection, type QueryResult } from 'k
 
 import { JsonColumnDetector } from './jsonColumnDetector';
 
-import { type BigQueryDialectConfig } from '.';
+import { type BigQueryDialectConfig } from './BigQueryDialect';
 
 /**
  * BigQuery database connection implementation for Kysely.
@@ -21,7 +21,7 @@ export class BigQueryConnection implements DatabaseConnection {
     /* Register known JSON columns if provided in config */
     if (config.jsonColumns) {
       for (const [tableName, columns] of Object.entries(config.jsonColumns)) {
-        this.#jsonDetector.registerJsonColumns(tableName, columns);
+        this.#jsonDetector.registerJsonColumns(tableName, columns as string[]);
       }
     }
   }

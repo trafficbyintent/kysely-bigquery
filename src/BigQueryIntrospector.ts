@@ -9,7 +9,7 @@ import {
   sql,
 } from 'kysely';
 
-import { type BigQueryDialectConfig } from '.';
+import { type BigQueryDialectConfig } from './BigQueryDialect';
 
 function freeze<T>(obj: T): Readonly<T> {
   return Object.freeze(obj);
