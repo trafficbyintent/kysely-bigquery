@@ -1,34 +1,9 @@
 {
-  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@trafficbyintent/style-guide/typescript/tsconfig",
   "compilerOptions": {
-    "lib": ["es2023"],
-    "module": "node16",
-    "target": "es2022",
-
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node16",
-    "rootDir": "src",
-    "outDir": "dist",
-    "alwaysStrict": true,
-    "preserveConstEnums": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "resolvePackageJsonExports": true,
-    "resolvePackageJsonImports": true,
-    "isolatedModules": true,
-    "useDefineForClassFields": true,
-    "resolveJsonModule": true
+    "rootDir": "./src",
+    "outDir": "./dist"
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist", "test"]
+  "exclude": ["node_modules", "dist"]
 }

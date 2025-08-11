@@ -1,9 +1,9 @@
-# @trafficbyintent/kysely-bigquery
+# @traffic.by.intent/kysely-bigquery
 
 [Kysely](https://github.com/koskimas/kysely) adapter for [BigQuery](https://cloud.google.com/bigquery?hl=en).
 
 ```bash
-npm i @google-cloud/bigquery @trafficbyintent/kysely-bigquery
+npm i @google-cloud/bigquery @traffic.by.intent/kysely-bigquery
 ```
 
 This project was largely adapted from [kysely-planetscale](https://github.com/depot/kysely-planetscale) and forked from [@maktouch/kysely-bigquery](https://github.com/maktouch/kysely-bigquery).
@@ -16,7 +16,7 @@ Follow [these docs](https://www.npmjs.com/package/@google-cloud/bigquery) for in
 
 ```typescript
 import { Kysely } from 'kysely';
-import { BigQueryDialect } from '@trafficbyintent/kysely-bigquery';
+import { BigQueryDialect } from '@traffic.by.intent/kysely-bigquery';
 
 interface SomeTable {
   key: string;

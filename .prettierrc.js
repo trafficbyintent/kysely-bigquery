@@ -1,0 +1,1 @@
+module.exports = require('@trafficbyintent/style-guide/typescript/prettier');

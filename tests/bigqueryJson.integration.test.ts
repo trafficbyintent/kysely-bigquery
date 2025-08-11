@@ -23,7 +23,7 @@ interface Database {
   'test_dataset.json_test_table': TestTable;
 }
 
-describe('BigQuery JSON Field Integration Tests', { timeout: 30000 }, () => {
+describe('BigQuery JSON Field Integration Tests', { timeout: 60000 }, () => {
   let kysely: Kysely<Database>;
   const testTableName = 'test_dataset.json_test_table';
 
@@ -55,7 +55,7 @@ describe('BigQuery JSON Field Integration Tests', { timeout: 30000 }, () => {
     await kysely.destroy();
   });
 
-  test('should handle JSON object insertion', async () => {
+  test('should handle JSON object insertion', { timeout: 45000 }, async () => {
     const testId = `json-insert-${Date.now()}`;
     const metadata: UserMetadata = {
       tags: ['test', 'bigquery', 'json'],
