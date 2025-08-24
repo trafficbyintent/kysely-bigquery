@@ -1,0 +1,81 @@
+name: Release (Simplified)
+
+on:
+  workflow_dispatch: # Manual trigger only, no inputs needed
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run lint
+        run: npm run lint
+
+      # Get version from package.json
+      - name: Get package version
+        id: package-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Publishing version: $VERSION"
+
+      # Publish to npm
+      - name: Publish package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # Use dry-run when running locally with act
+          if [ "$ACT" == "true" ]; then
+            echo "🏃 Running in act - using npm publish --dry-run"
+            npm publish --dry-run --access public
+          else
+            npm publish --access public
+          fi
+
+      # Create GitHub Release
+      - name: Create GitHub Release
+        if: env.ACT != 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.package-version.outputs.version }}
+          name: Release v${{ steps.package-version.outputs.version }}
+          body: |
+            ## 📦 @trafficbyintent/kysely-bigquery v${{ steps.package-version.outputs.version }}
+            
+            ### What's Changed
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+            
+            ### Installation
+            ```bash
+            npm install @trafficbyintent/kysely-bigquery@${{ steps.package-version.outputs.version }}
+            ```
+            
+            ---
+            Published to npm: https://www.npmjs.com/package/@trafficbyintent/kysely-bigquery
+
+      # Mock GitHub Release (for act testing)
+      - name: Mock GitHub Release (act)
+        if: env.ACT == 'true'
+        run: |
+          echo "🏃 Running in act - mocking GitHub release creation"
+          echo "📦 Would create release: v${{ steps.package-version.outputs.version }}"
+          echo "✅ Release workflow completed successfully in test mode"

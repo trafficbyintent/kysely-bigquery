@@ -7,9 +7,12 @@ This directory contains GitHub Actions workflows and related configuration for c
 ```
 .github/
 ├── workflows/
-│   ├── ci.yml              # Continuous Integration (runs on push/PR)
-│   ├── release.yml         # Automated npm publishing (on tag/manual)
-│   └── manual-release.yml  # Create release PRs with changelog
+│   ├── ci.yml                # Continuous Integration (runs on push/PR)
+│   ├── release.yml           # Automated npm publishing (on tag/manual)
+│   ├── release-simplified.yml # Simplified release (recommended)
+│   ├── version-bump.yml      # Version bumping reference (disabled)
+│   ├── publish.yml           # GitHub Packages publishing
+│   └── manual-release.yml    # Create release PRs with changelog
 ├── act-events/             # Event payloads for local testing
 │   ├── push.json          # Simulates push to main branch
 │   ├── pull_request.json  # Simulates PR event
@@ -49,7 +52,38 @@ This directory contains GitHub Actions workflows and related configuration for c
   - Publishes to npm with public access
   - Creates GitHub release for tag pushes
 
-### 3. Manual Release (manual-release.yml)
+### 3. Release Simplified (release-simplified.yml)
+**Trigger**: Manual workflow dispatch only
+
+**Purpose**: Simplified release workflow following TXI style-guide recommendations
+
+**Jobs**:
+- **Publish**:
+  - Reads version from package.json (no version input needed)
+  - Builds and tests the package
+  - Publishes to npm registry as public package
+  - Creates GitHub release with appropriate tag
+
+### 4. Publish (publish.yml)
+**Trigger**: 
+- Manual workflow dispatch
+- Called from other workflows
+
+**Purpose**: Dedicated workflow for publishing to npm
+
+**Jobs**:
+- **Publish**: 
+  - Builds the package
+  - Publishes to npm registry as public package
+
+### 5. Version Bump (version-bump.yml)
+**Trigger**: Manual workflow dispatch (currently disabled)
+
+**Purpose**: Reference implementation for automated version bumping
+
+**Note**: This workflow is disabled by default (`if: false`) and kept for reference. Version management should be done locally.
+
+### 6. Manual Release (manual-release.yml)
 **Trigger**: Manual workflow dispatch with release type and message
 
 **Purpose**: Create a release pull request with version bump and changelog update
@@ -67,18 +101,6 @@ This directory contains GitHub Actions workflows and related configuration for c
 
 To enable full CI functionality, configure these secrets in your repository settings:
 
-#### GitHub Packages Access (Organization Setup)
-
-This project uses `@trafficbyintent/style-guide` from GitHub Packages. Since this repository is in the @trafficbyintent organization, it should have access automatically.
-
-**If you see E403 errors**, check:
-1. **Repository Settings** → Actions → General → Workflow permissions
-   - Should be set to "Read and write permissions" or at least "Read repository contents and packages"
-2. **Organization Settings** → Packages → Package settings
-   - The style-guide package should grant access to this repository
-3. **The style-guide package visibility**
-   - If it's "Internal", this repo needs to be in the same organization
-   - If it's "Private", this repo needs explicit access
 
 #### 1. NPM_TOKEN (Required for Publishing)
 
@@ -180,36 +202,180 @@ act push -W .github/workflows/release.yml --eventpath .github/act-events/tag.jso
 
 ## Release Process
 
-### Automated Release (Recommended)
+### Overview
 
-1. Use the "Manual Release" workflow from Actions tab:
-   - Go to Actions → Manual Release → Run workflow
-   - Select release type: patch/minor/major
-   - Enter release message
-   
-2. Review and merge the created PR
+We use a **manual version management** approach where version updates are done locally and the CI/CD pipeline publishes the existing version from package.json. This approach:
 
-3. Create and push the tag:
-   ```bash
-   git checkout main
-   git pull
-   git tag v1.3.2
-   git push origin v1.3.2
-   ```
+- Gives full control over versioning
+- Avoids git permission issues in CI
+- Makes version history clear in git log
+- Simplifies the CI/CD pipeline
 
-4. The Release workflow will automatically publish to npm
+### Release Workflows
 
-### Quick Release
+#### 1. **release-simplified.yml** (Recommended)
+- **Trigger**: Manual workflow dispatch only
+- **Purpose**: Publishes the current version from package.json to npm
+- **No version input**: Reads version directly from package.json
+- **Creates GitHub release**: Automatically tags and creates release
 
-For a quick release without PR:
+#### 2. **release.yml** (Legacy)
+- Supports multiple trigger methods (tags, manual)
+- Has version input for workflow dispatch
+- More complex but flexible
+
+#### 3. **version-bump.yml** (Reference Only)
+- Currently disabled (if: false)
+- Documents automated version bumping approach
+- Kept for reference but not recommended
+
+### Step-by-Step Release Process
+
+#### 1. Local Version Management
 
 ```bash
-# Update version in package.json
-npm version patch  # or minor/major
+# 1. Ensure your main branch is up to date
+git checkout main
+git pull origin main
 
-# Push changes and tag
-git push origin main --tags
+# 2. Update version in package.json
+# Option A: Use npm version (creates commit but no push)
+npm version patch --no-git-tag-version  # For bug fixes (1.4.4 -> 1.4.5)
+npm version minor --no-git-tag-version  # For new features (1.4.4 -> 1.5.0)
+npm version major --no-git-tag-version  # For breaking changes (1.4.4 -> 2.0.0)
+
+# Option B: Manually edit package.json
+# Edit the "version" field directly
+
+# 3. Update CHANGELOG.md
+# Add release notes following Keep a Changelog format
 ```
+
+#### 2. Update Documentation
+
+Edit `CHANGELOG.md`:
+
+```markdown
+## [1.4.5] - 2024-01-20
+
+### Added
+- New features...
+
+### Changed
+- Updates...
+
+### Fixed
+- Bug fixes...
+```
+
+#### 3. Commit and Push
+
+```bash
+# Commit the version update
+git add package.json CHANGELOG.md
+git commit -m "chore: bump version to 1.4.5
+
+- Add feature X
+- Fix bug Y
+- Update dependency Z"
+
+# Push to main branch
+git push origin main
+```
+
+#### 4. Trigger Release Workflow
+
+1. Go to GitHub Actions tab in the repository
+2. Select "Release (Simplified)" workflow
+3. Click "Run workflow"
+4. Select branch: `main`
+5. Click "Run workflow" button
+
+The workflow will:
+- Read version from package.json
+- Run tests and linting
+- Build the package
+- Publish to npm registry as public package
+- Create a GitHub release with tag `v1.4.5`
+
+#### 5. Verify Release
+
+```bash
+# Check npm registry
+npm view @trafficbyintent/kysely-bigquery@1.4.5
+
+# Check GitHub Releases
+# Visit: https://github.com/trafficbyintent/kysely-bigquery/releases
+```
+
+### Beta/Pre-release Versions
+
+For testing new features before stable release:
+
+```bash
+# 1. Create beta version locally
+npm version prerelease --preid=beta --no-git-tag-version
+# Results in: 1.5.0-beta.0
+
+# 2. Commit and push
+git add package.json
+git commit -m "chore: prepare beta release 1.5.0-beta.0"
+git push origin main
+
+# 3. Run Release workflow as normal
+# The workflow will publish the beta version
+```
+
+### Rollback Process
+
+If you need to rollback a release:
+
+```bash
+# 1. Revert the version in package.json
+git revert HEAD  # If last commit was the version bump
+
+# 2. Or manually fix and create new patch version
+npm version patch --no-git-tag-version
+# Update CHANGELOG.md with rollback notes
+
+# 3. Push and release the fix
+git push origin main
+# Run Release workflow
+```
+
+### Security Considerations
+
+1. **NPM Token**: Must be configured in GitHub Secrets for publishing
+2. **Public Package**: This will be published as a public npm package
+3. **No secrets in code**: Ensure no sensitive data before releasing
+4. **Audit dependencies**: Run `npm audit` before each release
+
+### Release Best Practices
+
+1. **Always test locally first**
+   ```bash
+   npm test
+   npm run lint
+   npm run build
+   ```
+
+2. **Update CHANGELOG.md with every release**
+   - Follow Keep a Changelog format
+   - Be clear about breaking changes
+
+3. **Use semantic versioning**
+   - PATCH: Bug fixes (1.4.4 -> 1.4.5)
+   - MINOR: New features, backwards compatible (1.4.0 -> 1.5.0)
+   - MAJOR: Breaking changes (1.0.0 -> 2.0.0)
+
+4. **Create detailed commit messages**
+   - Explain what changed and why
+   - Reference issues if applicable
+
+5. **Monitor after release**
+   - Check GitHub Actions for success
+   - Verify package is accessible
+   - Monitor for user issues
 
 ## Troubleshooting
 

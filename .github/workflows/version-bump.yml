@@ -1,0 +1,67 @@
+name: Version Bump (Local Management)
+
+# This workflow is for reference only - version bumping should be done locally
+# It's kept here to document the process but is disabled by default
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+
+jobs:
+  version:
+    # Only run if explicitly enabled (set to true to enable)
+    if: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure git
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+
+      - name: Bump version
+        run: |
+          if [ "${{ github.event.inputs.bump }}" == "prerelease" ]; then
+            npm version prerelease --preid=beta -m "chore: release %s [skip ci]"
+          else
+            npm version ${{ github.event.inputs.bump }} -m "chore: release %s [skip ci]"
+          fi
+
+      - name: Push changes
+        run: |
+          git push origin HEAD:main
+          git push --tags
+
+      - name: Output new version
+        id: new-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Version bumped to: $VERSION"
+          echo "📝 Next steps:"
+          echo "   1. Update CHANGELOG.md with release notes"
+          echo "   2. Run the Release workflow to publish"

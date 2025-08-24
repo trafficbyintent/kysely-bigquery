@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2025-08-24
+
+### Added
+- Simplified release workflow (`release-simplified.yml`) following TXI style-guide best practices
+- Version bump reference workflow for documentation purposes
+- Comprehensive release documentation in `.github/README.md`
+
+### Changed
+- Migrated `@trafficbyintent/style-guide` from GitHub Packages to private npm registry
+- Updated style-guide dependency to v1.2.1
+- Improved CI workflow to remove unnecessary GitHub Package authentication
+- Enhanced release process documentation with step-by-step instructions
+
+### Fixed
+- CI authentication issues with private npm packages
+- Workflow validation and syntax issues
+
 ## [1.4.4] - 2025-08-11
 
 ### Fixed
