@@ -54,6 +54,7 @@ describe('BigQuery JSON Query Builder Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (id, name, metadata) VALUES (?, ?, ?)',
       params: [1, 'John', JSON.stringify(jsonData)],
+      parseJSON: true,
     });
   });
 
@@ -95,6 +96,7 @@ describe('BigQuery JSON Query Builder Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'UPDATE users SET settings = ? WHERE id = ?',
       params: [JSON.stringify(newSettings), 1],
+      parseJSON: true,
     });
   });
 
@@ -132,6 +134,7 @@ describe('BigQuery JSON Query Builder Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (id, name, tags, metadata) VALUES (?, ?, ?, ?)',
       params: [1, 'John', tags, JSON.stringify(metadata)],
+      parseJSON: true,
     });
   });
 
@@ -167,6 +170,7 @@ describe('BigQuery JSON Query Builder Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO products (id, name, tags) VALUES (?, ?, ?)',
       params: [1, 'Product', tags],
+      parseJSON: true,
     });
   });
 
@@ -200,7 +204,8 @@ describe('BigQuery JSON Query Builder Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (id, name, metadata) VALUES (?, ?, ?)',
       params: [1, 'John', null],
-      types: ['INT64', 'STRING', 'STRING']
+      types: ['INT64', 'STRING', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -237,6 +242,7 @@ describe('BigQuery JSON Query Builder Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (id, name, metadata) VALUES (?, ?, ?), (?, ?, ?)',
       params: [1, 'Alice', JSON.stringify(meta1), 2, 'Bob', JSON.stringify(meta2)],
+      parseJSON: true,
     });
   });
 
@@ -284,6 +290,7 @@ describe('BigQuery JSON Query Builder Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'UPDATE users SET settings = ?, preferences = ? WHERE id = ?',
       params: [JSON.stringify(settings), JSON.stringify(preferences), 1],
+      parseJSON: true,
     });
   });
 });

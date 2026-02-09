@@ -41,7 +41,8 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'SELECT * FROM users WHERE email = ? OR status = ?',
       params: [null, 'active'],
-      types: ['STRING', 'STRING']
+      types: ['STRING', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -58,7 +59,8 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (name, email, phone) VALUES (?, ?, ?)',
       params: ['John', null, null],
-      types: ['STRING', 'STRING', 'STRING']
+      types: ['STRING', 'STRING', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -108,6 +110,7 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'UPDATE users SET active = ?, verified = ? WHERE id = ?',
       params: [true, false, 123],
+      parseJSON: true,
     });
   });
 
@@ -125,7 +128,8 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO files (data, checksum) VALUES (?, ?)',
       params: [buffer, null],
-      types: ['BYTES', 'STRING']
+      types: ['BYTES', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -144,7 +148,8 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO data_table (json_col, array_col, null_col) VALUES (?, ?, ?)',
       params: [jsonData, arrayData, null],
-      types: ['STRING', 'ARRAY<INT64>', 'STRING']
+      types: ['STRING', 'ARRAY<INT64>', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -165,7 +170,8 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO complex_table VALUES (?, ?, ?, ?, ?, ?, ?)',
       params: ['string', 42, true, date, buffer, object, null],
-      types: ['STRING', 'INT64', 'BOOL', 'TIMESTAMP', 'BYTES', 'STRING', 'STRING']
+      types: ['STRING', 'INT64', 'BOOL', 'TIMESTAMP', 'BYTES', 'STRING', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -182,7 +188,8 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO measurements (value, price, ratio) VALUES (?, ?, ?)',
       params: [3.14159, 99.99, null],
-      types: ['FLOAT64', 'FLOAT64', 'STRING']
+      types: ['FLOAT64', 'FLOAT64', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -199,7 +206,8 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'UPDATE stats SET count = ?, average = ?, total = ? WHERE id = ?',
       params: [100, 75.5, 0.1, null],
-      types: ['INT64', 'FLOAT64', 'FLOAT64', 'STRING']
+      types: ['INT64', 'FLOAT64', 'FLOAT64', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -217,7 +225,8 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (tags, notes) VALUES (?, ?)',
       params: [tags, null],
-      types: ['ARRAY<STRING>', 'STRING']
+      types: ['ARRAY<STRING>', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -235,7 +244,8 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO data (ids, label) VALUES (?, ?)',
       params: [ids, null],
-      types: ['ARRAY<INT64>', 'STRING']
+      types: ['ARRAY<INT64>', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -253,7 +263,8 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO metrics (scores, label) VALUES (?, ?)',
       params: [scores, null],
-      types: ['ARRAY<FLOAT64>', 'STRING']
+      types: ['ARRAY<FLOAT64>', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -271,7 +282,8 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO flags (values, label) VALUES (?, ?)',
       params: [flags, null],
-      types: ['ARRAY<BOOL>', 'STRING']
+      types: ['ARRAY<BOOL>', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -288,7 +300,8 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO data (tags, label) VALUES (?, ?)',
       params: [[], null],
-      types: ['ARRAY<STRING>', 'STRING']
+      types: ['ARRAY<STRING>', 'STRING'],
+      parseJSON: true,
     });
   });
 });

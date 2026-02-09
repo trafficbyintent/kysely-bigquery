@@ -64,6 +64,7 @@ describe('BigQuery Streaming', () => {
     expect(mockCreateQueryStream).toHaveBeenCalledWith({
       query: 'SELECT * FROM users',
       params: [],
+      parseJSON: true,
     });
   });
 
@@ -161,6 +162,7 @@ describe('BigQuery Streaming', () => {
     expect(mockCreateQueryStream).toHaveBeenCalledWith({
       query: 'SELECT * FROM users WHERE age > ?',
       params: [21],
+      parseJSON: true,
     });
     expect(results).toHaveLength(1);
   });
@@ -355,7 +357,8 @@ describe('BigQuery Streaming', () => {
     expect(mockCreateQueryStream).toHaveBeenCalledWith({
       query: 'SELECT * FROM users WHERE email = ? OR status = ?',
       params: [null, 'active'],
-      types: ['STRING', 'STRING']
+      types: ['STRING', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -392,7 +395,8 @@ describe('BigQuery Streaming', () => {
     expect(mockCreateQueryStream).toHaveBeenCalledWith({
       query: 'INSERT INTO test_table VALUES (?, ?, ?, ?, ?, ?, ?)',
       params: ['string', 42, true, date, buffer, { key: 'value' }, null],
-      types: ['STRING', 'INT64', 'BOOL', 'TIMESTAMP', 'BYTES', 'STRING', 'STRING']
+      types: ['STRING', 'INT64', 'BOOL', 'TIMESTAMP', 'BYTES', 'STRING', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -427,7 +431,8 @@ describe('BigQuery Streaming', () => {
     expect(mockCreateQueryStream).toHaveBeenCalledWith({
       query: 'SELECT * FROM measurements WHERE value > ? AND price < ? AND ratio = ?',
       params: [3.14159, 99.99, null],
-      types: ['FLOAT64', 'FLOAT64', 'STRING']
+      types: ['FLOAT64', 'FLOAT64', 'STRING'],
+      parseJSON: true,
     });
   });
 

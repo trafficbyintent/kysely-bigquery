@@ -36,6 +36,7 @@ describe('BigQueryConnection', () => {
       expect(mockQuery).toHaveBeenCalledWith({
         query: 'SELECT * FROM users WHERE 1=0',
         params: [],
+        parseJSON: true,
       });
     });
 

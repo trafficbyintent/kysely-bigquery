@@ -47,7 +47,8 @@ describe('BigQuery JSON Field Handling', () => {
        JSON serialization should be handled at application level for JSON type fields */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (name, metadata) VALUES (?, ?)',
-      params: ['John', metadata]
+      params: ['John', metadata],
+      parseJSON: true,
     });
   });
 
@@ -72,7 +73,8 @@ describe('BigQuery JSON Field Handling', () => {
     /* BigQuery connection should pass objects as-is */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'UPDATE users SET settings = ? WHERE id = ?',
-      params: [newSettings, 1]
+      params: [newSettings, 1],
+      parseJSON: true,
     });
   });
 
@@ -90,7 +92,8 @@ describe('BigQuery JSON Field Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'UPDATE users SET metadata = ? WHERE id = ?',
       params: [null, 1],
-      types: ['STRING', 'INT64']
+      types: ['STRING', 'INT64'],
+      parseJSON: true,
     });
   });
 
@@ -182,7 +185,8 @@ describe('BigQuery JSON Field Handling', () => {
     /* BigQuery connection should pass objects as-is */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO user_data (id, data) VALUES (?, ?)',
-      params: [1, complexData]
+      params: [1, complexData],
+      parseJSON: true,
     });
   });
 });

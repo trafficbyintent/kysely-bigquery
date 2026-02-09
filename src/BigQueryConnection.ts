@@ -45,6 +45,7 @@ export class BigQueryConnection implements DatabaseConnection {
       const options: Query = {
         query: compiledQuery.sql,
         params: processedParams,
+        parseJSON: true,
       };
 
       /* BigQuery needs types array for ALL parameters when there are null parameters */
@@ -122,6 +123,7 @@ export class BigQueryConnection implements DatabaseConnection {
     const options: Query = {
       query: compiledQuery.sql,
       params: processedParams,
+      parseJSON: true,
     };
 
     /* BigQuery needs types array for ALL parameters when there are null parameters */

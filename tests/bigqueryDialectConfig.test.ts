@@ -161,6 +161,7 @@ describe('BigQueryDialect Configuration', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'select * from `users`',
       params: [],
+      parseJSON: true,
     });
   });
 
@@ -182,6 +183,7 @@ describe('BigQueryDialect Configuration', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'select * from `users`',
       params: [],
+      parseJSON: true,
     });
   });
 
@@ -203,6 +205,7 @@ describe('BigQueryDialect Configuration', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'select * from `users`',
       params: [],
+      parseJSON: true,
     });
   });
 

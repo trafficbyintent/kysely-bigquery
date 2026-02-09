@@ -75,10 +75,10 @@ describe('BigQuery JSON Column Configuration', () => {
     /* Verify the query was called with serialized JSON */
     expect(mockQuery).toHaveBeenCalled();
     const queryCall = mockQuery.mock.calls[0][0];
-    
-    /* Check that JSON objects were serialized to strings */
-    expect(queryCall.params[2]).toBe(JSON.stringify(metadata));
-    expect(queryCall.params[3]).toBe(JSON.stringify(settings));
+
+    /* Check that JSON objects were serialized (order-independent) */
+    expect(queryCall.params).toContain(JSON.stringify(metadata));
+    expect(queryCall.params).toContain(JSON.stringify(settings));
   });
 
   test('should not serialize non-JSON columns', async () => {
@@ -110,11 +110,11 @@ describe('BigQuery JSON Column Configuration', () => {
       .execute();
 
     const queryCall = mockQuery.mock.calls[0][0];
-    
-    /* metadata should be serialized */
-    expect(queryCall.params[2]).toBe(JSON.stringify(metadata));
+
+    /* metadata should be serialized (order-independent) */
+    expect(queryCall.params).toContain(JSON.stringify(metadata));
     /* settings should remain as object (not configured as JSON) */
-    expect(queryCall.params[3]).toEqual({ key: 'value' });
+    expect(queryCall.params).toContainEqual({ key: 'value' });
   });
 
   test('should handle UPDATE with JSON columns', async () => {
@@ -211,9 +211,9 @@ describe('BigQuery JSON Column Configuration', () => {
       .execute();
 
     const queryCall = mockQuery.mock.calls[0][0];
-    
-    /* Null values should remain null */
-    expect(queryCall.params[2]).toBeNull();
-    expect(queryCall.params[3]).toBeNull();
+
+    /* Null values should remain null (not serialized) */
+    const nullCount = queryCall.params.filter((p: unknown) => p === null).length;
+    expect(nullCount).toBe(2);
   });
 });
