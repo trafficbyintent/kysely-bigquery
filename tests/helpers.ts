@@ -1,7 +1,6 @@
 import { Kysely, sql } from 'kysely';
 
 import { BigQueryDialect } from '../src';
-import { createBigQueryInstance } from './config';
 
 export const expectedSimpleSelectCompiled = {
   parameters: [10, 1],
@@ -70,7 +69,7 @@ export const expectedSimpleSelectCompiled = {
   sql: 'select * from `features`.`metadata` where `id` > ? limit ?',
 };
 
-// Test data fixtures
+/* Test data fixtures */
 export const testUsers = [
   {
     id: '1',
@@ -113,13 +112,12 @@ export async function createTestTable(
   tableName: string,
   schema: string,
 ): Promise<void> {
-  const bigquery = createBigQueryInstance();
   const fullTableName = `${dataset}.${tableName}`;
   
-  // Drop table if exists
+  /* Drop table if exists */
   await kysely.schema.dropTable(fullTableName).ifExists().execute().catch(() => {});
   
-  // Create table using raw SQL for BigQuery-specific syntax
+  /* Create table using raw SQL for BigQuery-specific syntax */
   await sql.raw(schema).execute(kysely);
 }
 
@@ -135,7 +133,7 @@ export async function cleanupTestTable(
   await kysely.schema.dropTable(fullTableName).ifExists().execute().catch(() => {});
 }
 
-// Test schemas
+/* Test schemas */
 export const TEST_USERS_SCHEMA = `
 CREATE TABLE IF NOT EXISTS test_dataset.test_users (
   id STRING NOT NULL,

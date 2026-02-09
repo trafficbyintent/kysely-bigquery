@@ -13,6 +13,7 @@ import { type BigQueryDialectConfig } from './BigQueryDialect';
 export class BigQueryConnection implements DatabaseConnection {
   readonly #client: BigQuery | Dataset | Table;
   readonly #jsonDetector: JsonColumnDetector;
+  readonly #jsonColumnNames: Set<string>;
 
   constructor(config: BigQueryDialectConfig) {
     this.#client = config.bigquery ?? new BigQuery(config.options);
@@ -24,6 +25,8 @@ export class BigQueryConnection implements DatabaseConnection {
         this.#jsonDetector.registerJsonColumns(tableName, columns);
       }
     }
+
+    this.#jsonColumnNames = this.#jsonDetector.getRegisteredJsonColumnNames();
   }
 
   /**
@@ -35,19 +38,9 @@ export class BigQueryConnection implements DatabaseConnection {
   async executeQuery<O>(compiledQuery: CompiledQuery): Promise<QueryResult<O>> {
     try {
       const params = [...compiledQuery.parameters];
-      const nullParamIndices: number[] = [];
 
       /* Process parameters to handle nulls and JSON serialization */
-      let processedParams = this.#jsonDetector.processParameters(compiledQuery, params);
-
-      /* Check for null parameters */
-      processedParams = processedParams.map((param, index) => {
-        if (param === null) {
-          nullParamIndices.push(index);
-          return null;
-        }
-        return param;
-      });
+      const processedParams = this.#jsonDetector.processParameters(compiledQuery, params);
 
       const options: Query = {
         query: compiledQuery.sql,
@@ -55,59 +48,14 @@ export class BigQueryConnection implements DatabaseConnection {
       };
 
       /* BigQuery needs types array for ALL parameters when there are null parameters */
-      if (nullParamIndices.length > 0) {
-        options.types = params.map((param) => {
-          if (param === null) {
-            return 'STRING';
-          } else if (typeof param === 'number') {
-            return Number.isInteger(param) ? 'INT64' : 'FLOAT64';
-          } else if (typeof param === 'boolean') {
-            return 'BOOL';
-          } else if (param instanceof Date) {
-            return 'TIMESTAMP';
-          } else if (param instanceof Buffer) {
-            return 'BYTES';
-          } else if (typeof param === 'object') {
-            /*
-             * Let BigQuery infer the type for arrays and objects
-             * They could be ARRAY, STRUCT, or JSON depending on the column
-             */
-            return 'JSON';
-          } else {
-            return 'STRING';
-          }
-        });
+      if (processedParams.some((p) => p === null)) {
+        options.types = this.#inferParamTypes(processedParams);
       }
 
       const [rows] = await this.#client.query(options);
 
-      /* Process result rows to parse JSON strings back to objects */
       const processedRows = Array.isArray(rows)
-        ? rows.map((row) => {
-            const processedRow: Record<string, unknown> = {};
-            for (const [key, value] of Object.entries(row as Record<string, unknown>)) {
-              if (typeof value === 'string' && value.length > 0) {
-                /* Try to parse JSON strings */
-                try {
-                  const trimmed = value.trim();
-                  if (
-                    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-                    (trimmed.startsWith('[') && trimmed.endsWith(']'))
-                  ) {
-                    processedRow[key] = JSON.parse(value);
-                  } else {
-                    processedRow[key] = value;
-                  }
-                } catch {
-                  /* If parsing fails, keep the original string */
-                  processedRow[key] = value;
-                }
-              } else {
-                processedRow[key] = value;
-              }
-            }
-            return processedRow;
-          })
+        ? rows.map((row) => this.#processResultRow(row as Record<string, unknown>))
         : [];
 
       return {
@@ -167,19 +115,9 @@ export class BigQueryConnection implements DatabaseConnection {
     _chunkSize: number,
   ): AsyncIterableIterator<QueryResult<O>> {
     const params = [...compiledQuery.parameters];
-    const nullParamIndices: number[] = [];
 
     /* Process parameters to handle nulls and JSON serialization */
-    let processedParams = this.#jsonDetector.processParameters(compiledQuery, params);
-
-    /* Check for null parameters */
-    processedParams = processedParams.map((param, index) => {
-      if (param === null) {
-        nullParamIndices.push(index);
-        return null;
-      }
-      return param;
-    });
+    const processedParams = this.#jsonDetector.processParameters(compiledQuery, params);
 
     const options: Query = {
       query: compiledQuery.sql,
@@ -187,24 +125,8 @@ export class BigQueryConnection implements DatabaseConnection {
     };
 
     /* BigQuery needs types array for ALL parameters when there are null parameters */
-    if (nullParamIndices.length > 0) {
-      options.types = params.map((param) => {
-        if (param === null) {
-          return 'STRING';
-        } else if (typeof param === 'number') {
-          return Number.isInteger(param) ? 'INT64' : 'FLOAT64';
-        } else if (typeof param === 'boolean') {
-          return 'BOOL';
-        } else if (param instanceof Date) {
-          return 'TIMESTAMP';
-        } else if (param instanceof Buffer) {
-          return 'BYTES';
-        } else if (typeof param === 'object') {
-          return 'JSON';
-        } else {
-          return 'STRING';
-        }
-      });
+    if (processedParams.some((p) => p === null)) {
+      options.types = this.#inferParamTypes(processedParams);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -221,30 +143,8 @@ export class BigQueryConnection implements DatabaseConnection {
 
     try {
       for await (const row of stream) {
-        /* Process row to parse JSON strings */
-        const processedRow: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(row as Record<string, unknown>)) {
-          if (typeof value === 'string' && value.length > 0) {
-            try {
-              const trimmed = value.trim();
-              if (
-                (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-                (trimmed.startsWith('[') && trimmed.endsWith(']'))
-              ) {
-                processedRow[key] = JSON.parse(value);
-              } else {
-                processedRow[key] = value;
-              }
-            } catch {
-              processedRow[key] = value;
-            }
-          } else {
-            processedRow[key] = value;
-          }
-        }
-
         yield {
-          rows: [processedRow as O],
+          rows: [this.#processResultRow(row as Record<string, unknown>) as O],
         };
       }
     } catch (error) {
@@ -254,5 +154,57 @@ export class BigQueryConnection implements DatabaseConnection {
       }
       throw error;
     }
+  }
+
+  /**
+   * Infers BigQuery parameter types from JavaScript values.
+   * Required when any parameter is null because BigQuery needs explicit types.
+   */
+  #inferParamTypes(params: readonly unknown[]): string[] {
+    return params.map((param) => {
+      if (param === null) {
+        return 'STRING';
+      }
+      if (typeof param === 'number') {
+        return Number.isInteger(param) ? 'INT64' : 'FLOAT64';
+      }
+      if (typeof param === 'boolean') {
+        return 'BOOL';
+      }
+      if (param instanceof Date) {
+        return 'TIMESTAMP';
+      }
+      if (param instanceof Buffer) {
+        return 'BYTES';
+      }
+      if (typeof param === 'object') {
+        return 'JSON';
+      }
+      return 'STRING';
+    });
+  }
+
+  /**
+   * Processes a single result row, parsing registered JSON columns.
+   * Only columns registered via jsonColumns config are parsed.
+   */
+  #processResultRow(row: Record<string, unknown>): Record<string, unknown> {
+    if (this.#jsonColumnNames.size === 0) {
+      return row;
+    }
+
+    const processedRow: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(row)) {
+      if (this.#jsonColumnNames.has(key) && typeof value === 'string' && value.length > 0) {
+        try {
+          processedRow[key] = JSON.parse(value);
+        } catch {
+          processedRow[key] = value;
+        }
+      } else {
+        processedRow[key] = value;
+      }
+    }
+    return processedRow;
   }
 }

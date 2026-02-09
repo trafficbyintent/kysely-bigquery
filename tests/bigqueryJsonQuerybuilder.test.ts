@@ -1,6 +1,6 @@
 import { CompiledQuery } from 'kysely';
 import { describe, expect, test, vi } from 'vitest';
-import { BigQueryConnection } from '../src/bigQueryConnection';
+import { BigQueryConnection } from '../src/BigQueryConnection';
 import { BigQueryDialectConfig } from '../src';
 
 describe('BigQuery JSON Query Builder Handling', () => {
@@ -50,7 +50,7 @@ describe('BigQuery JSON Query Builder Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // Should stringify the JSON object for the metadata column
+    /* Should stringify the JSON object for the metadata column */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (id, name, metadata) VALUES (?, ?, ?)',
       params: [1, 'John', JSON.stringify(jsonData)],
@@ -91,7 +91,7 @@ describe('BigQuery JSON Query Builder Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // Should stringify the JSON object for the settings column
+    /* Should stringify the JSON object for the settings column */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'UPDATE users SET settings = ? WHERE id = ?',
       params: [JSON.stringify(newSettings), 1],
@@ -128,7 +128,7 @@ describe('BigQuery JSON Query Builder Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // Should only stringify the metadata column (JSON), not tags (ARRAY)
+    /* Should only stringify the metadata column (JSON), not tags (ARRAY) */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (id, name, tags, metadata) VALUES (?, ?, ?, ?)',
       params: [1, 'John', tags, JSON.stringify(metadata)],
@@ -163,7 +163,7 @@ describe('BigQuery JSON Query Builder Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // Should NOT stringify arrays - BigQuery handles them natively
+    /* Should NOT stringify arrays - BigQuery handles them natively */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO products (id, name, tags) VALUES (?, ?, ?)',
       params: [1, 'Product', tags],
@@ -196,7 +196,7 @@ describe('BigQuery JSON Query Builder Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // Should handle null values with proper types
+    /* Should handle null values with proper types */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (id, name, metadata) VALUES (?, ?, ?)',
       params: [1, 'John', null],
@@ -244,7 +244,7 @@ describe('BigQuery JSON Query Builder Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // Should stringify both JSON objects
+    /* Should stringify both JSON objects */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'UPDATE users SET settings = ?, preferences = ? WHERE id = ?',
       params: [JSON.stringify(settings), JSON.stringify(preferences), 1],

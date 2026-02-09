@@ -53,6 +53,26 @@ export class JsonColumnDetector {
   }
 
   /**
+   * Returns a flat set of all registered JSON column names across all tables.
+   * Used by the connection to determine which result columns to JSON-parse.
+   *
+   * Note: Because BigQuery results don't include table context, column names
+   * are matched without table qualification. If two tables share a column name
+   * and only one is registered as JSON, results from both tables will have
+   * that column parsed. Avoid registering common column names (e.g., "data")
+   * unless all tables with that column store JSON in it.
+   */
+  getRegisteredJsonColumnNames(): Set<string> {
+    const allNames = new Set<string>();
+    for (const columns of this.#jsonColumnCache.values()) {
+      for (const col of columns) {
+        allNames.add(col);
+      }
+    }
+    return allNames;
+  }
+
+  /**
    * Extract table and column information from a compiled query
    */
   extractTableAndColumns(compiledQuery: CompiledQuery): {
@@ -133,39 +153,6 @@ export class JsonColumnDetector {
     /* c8 ignore start - defensive fallback for unrecognized node types */
     return undefined;
     /* c8 ignore stop */
-  }
-
-  /**
-   * Detect if a column name is likely to be a JSON column based on naming conventions
-   * This is a fallback when we don't have schema information
-   */
-  isLikelyJsonColumn(columnName: string): boolean {
-    const jsonColumnPatterns = [
-      'metadata',
-      'settings',
-      'config',
-      'configuration',
-      'preferences',
-      'options',
-      'data',
-      'json',
-      'payload',
-      'body',
-      'content',
-      'attributes',
-      'properties',
-      'params',
-      'extra',
-      'custom',
-    ];
-
-    const lowerColumnName = columnName.toLowerCase();
-    return jsonColumnPatterns.some(
-      (pattern) =>
-        lowerColumnName === pattern ||
-        lowerColumnName.endsWith(`_${pattern}`) ||
-        lowerColumnName.startsWith(`${pattern}_`),
-    );
   }
 
   /**

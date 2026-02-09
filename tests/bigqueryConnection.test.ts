@@ -49,7 +49,27 @@ describe('BigQueryConnection', () => {
       expect(result.rows).toEqual([]);
     });
 
-    test('handles JSON parsing in results', async () => {
+    test('does not auto-parse JSON strings without registered columns', async () => {
+      const mockRows = [
+        { id: 1, metadata: '{"role": "admin"}', settings: '[1,2,3]' },
+      ];
+
+      mockQuery.mockResolvedValue([mockRows]);
+
+      const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
+      const result = await connection.executeQuery(compiledQuery);
+
+      /* Without jsonColumns config, strings are returned as-is */
+      expect(result.rows[0].metadata).toBe('{"role": "admin"}');
+      expect(result.rows[0].settings).toBe('[1,2,3]');
+    });
+
+    test('parses registered JSON columns in results', async () => {
+      const registeredConnection = new BigQueryConnection({
+        options: { projectId: 'test-project' },
+        jsonColumns: { 'dataset.users': ['metadata', 'settings'] },
+      });
+
       const mockRows = [
         { id: 1, metadata: '{"role": "admin"}', settings: '[1,2,3]' },
         { id: 2, metadata: 'not json', settings: '{"invalid": }' },
@@ -58,13 +78,13 @@ describe('BigQueryConnection', () => {
       mockQuery.mockResolvedValue([mockRows]);
 
       const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
-      const result = await connection.executeQuery(compiledQuery);
+      const result = await registeredConnection.executeQuery(compiledQuery);
 
-      /* Valid JSON should be parsed */
+      /* Registered JSON columns are parsed */
       expect(result.rows[0].metadata).toEqual({ role: 'admin' });
       expect(result.rows[0].settings).toEqual([1, 2, 3]);
 
-      /* Invalid JSON should remain as strings */
+      /* Malformed JSON remains as string */
       expect(result.rows[1].metadata).toBe('not json');
       expect(result.rows[1].settings).toBe('{"invalid": }');
     });

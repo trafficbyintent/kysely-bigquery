@@ -2,7 +2,7 @@ import { CompiledQuery, Kysely } from 'kysely';
 import { describe, expect, test, vi, beforeEach } from 'vitest';
 import { BigQueryDialect, BigQueryConnection } from '../src';
 
-// Mock the BigQuery client
+/* Mock the BigQuery client */
 const mockQuery = vi.fn();
 const mockCreateQueryStream = vi.fn();
 
@@ -65,7 +65,7 @@ describe('BigQuery Null Parameter Handling', () => {
   test('should handle query builder with null values', async () => {
     mockQuery.mockResolvedValue([[]]);
 
-    // This simulates what Kysely generates
+    /* This simulates what Kysely generates */
     const compiledQuery = CompiledQuery.raw(
       'UPDATE users SET email = ?, updated_at = ? WHERE id = ?',
       [null, new Date('2024-01-01'), 123]
@@ -73,14 +73,14 @@ describe('BigQuery Null Parameter Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // Verify the query was called
+    /* Verify the query was called */
     expect(mockQuery).toHaveBeenCalled();
     const callArgs = mockQuery.mock.calls[0][0];
     expect(callArgs.params).toEqual([null, new Date('2024-01-01'), 123]);
   });
 
   test('should provide helpful error message for null parameter type errors', async () => {
-    // Simulate BigQuery error for missing null types
+    /* Simulate BigQuery error for missing null types */
     mockQuery.mockRejectedValue(
       new Error('Parameter types must be provided for null values via the \'types\' field in query options.')
     );

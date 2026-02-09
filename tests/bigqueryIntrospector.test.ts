@@ -16,20 +16,6 @@ vi.mock('@google-cloud/bigquery', () => {
   };
 });
 
-/* Mock Bluebird for concurrency testing */
-vi.mock('bluebird', () => ({
-  default: {
-    map: vi.fn(async (items: any[], fn: any, options: any) => {
-      /* Execute map function for each item sequentially */
-      const results = [];
-      for (const item of items) {
-        results.push(await fn(item));
-      }
-      return results;
-    }),
-  },
-}));
-
 describe('BigQueryIntrospector', () => {
   let kysely: Kysely<any>;
   let introspector: BigQueryIntrospector;
@@ -42,6 +28,48 @@ describe('BigQueryIntrospector', () => {
     });
     
     introspector = new BigQueryIntrospector(kysely, { options: { projectId: 'test-project' } });
+  });
+
+  describe('client resolution', () => {
+    test('uses provided BigQuery instance when config.bigquery has getDatasets', async () => {
+      const mockProvidedGetDatasets = vi.fn().mockResolvedValue([[{ id: 'from_provided' }]]);
+      const mockBigQueryInstance = {
+        query: vi.fn(),
+        createQueryStream: vi.fn(),
+        getDatasets: mockProvidedGetDatasets,
+      };
+
+      const providedIntrospector = new BigQueryIntrospector(kysely, {
+        bigquery: mockBigQueryInstance as any,
+      });
+
+      const schemas = await providedIntrospector.getSchemas();
+
+      /* Should call getDatasets on the provided instance, not the mock from BigQuery constructor */
+      expect(mockProvidedGetDatasets).toHaveBeenCalledOnce();
+      expect(mockGetDatasets).not.toHaveBeenCalled();
+      expect(schemas[0].name).toBe('from_provided');
+    });
+
+    test('falls back to new BigQuery when config.bigquery lacks getDatasets', async () => {
+      /* Dataset/Table instances don't have getDatasets */
+      const mockDatasetInstance = {
+        query: vi.fn(),
+        createQueryStream: vi.fn(),
+      };
+
+      mockGetDatasets.mockResolvedValue([[{ id: 'from_fallback' }]]);
+
+      const datasetIntrospector = new BigQueryIntrospector(kysely, {
+        bigquery: mockDatasetInstance as any,
+      });
+
+      const schemas = await datasetIntrospector.getSchemas();
+
+      /* Should fall back to the new BigQuery() constructor mock */
+      expect(mockGetDatasets).toHaveBeenCalledOnce();
+      expect(schemas[0].name).toBe('from_fallback');
+    });
   });
 
   describe('getSchemas', () => {

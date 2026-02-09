@@ -2,7 +2,7 @@ import { CompiledQuery, Kysely } from 'kysely';
 import { describe, expect, test, vi, beforeEach } from 'vitest';
 import { BigQueryDialect, BigQueryConnection } from '../src';
 
-// Mock the BigQuery client
+/* Mock the BigQuery client */
 const mockQuery = vi.fn();
 const mockCreateQueryStream = vi.fn();
 
@@ -43,8 +43,8 @@ describe('BigQuery JSON Field Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // BigQuery connection should pass objects as-is
-    // JSON serialization should be handled at application level for JSON type fields
+    /* BigQuery connection should pass objects as-is
+       JSON serialization should be handled at application level for JSON type fields */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (name, metadata) VALUES (?, ?)',
       params: ['John', metadata]
@@ -69,7 +69,7 @@ describe('BigQuery JSON Field Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // BigQuery connection should pass objects as-is
+    /* BigQuery connection should pass objects as-is */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'UPDATE users SET settings = ? WHERE id = ?',
       params: [newSettings, 1]
@@ -94,14 +94,13 @@ describe('BigQuery JSON Field Handling', () => {
     });
   });
 
-  test('should parse JSON fields in SELECT results', async () => {
-    // BigQuery returns JSON as strings
+  test('should not auto-parse JSON fields in SELECT results without registration', async () => {
     const mockRows = [{
       id: 1,
       name: 'John',
       metadata: '{"tags":["test","bigquery"],"settings":{"theme":"dark"}}',
     }];
-    
+
     mockQuery.mockResolvedValue([mockRows]);
 
     const compiledQuery: CompiledQuery = {
@@ -112,10 +111,37 @@ describe('BigQuery JSON Field Handling', () => {
 
     const result = await connection.executeQuery<any>(compiledQuery);
 
-    // Should parse JSON strings automatically
-    expect(result.rows[0].metadata).toEqual({ 
-      tags: ['test', 'bigquery'], 
-      settings: { theme: 'dark' } 
+    /* Without jsonColumns config, JSON strings are returned as-is */
+    expect(result.rows[0].metadata).toBe(
+      '{"tags":["test","bigquery"],"settings":{"theme":"dark"}}',
+    );
+  });
+
+  test('should parse registered JSON fields in SELECT results', async () => {
+    const registeredConnection = new BigQueryConnection({
+      options: { projectId: 'test-project' },
+      jsonColumns: { 'dataset.users': ['metadata'] },
+    });
+
+    const mockRows = [{
+      id: 1,
+      name: 'John',
+      metadata: '{"tags":["test","bigquery"],"settings":{"theme":"dark"}}',
+    }];
+
+    mockQuery.mockResolvedValue([mockRows]);
+
+    const compiledQuery: CompiledQuery = {
+      sql: 'SELECT * FROM users WHERE id = ?',
+      parameters: [1],
+      query: {} as any
+    };
+
+    const result = await registeredConnection.executeQuery<any>(compiledQuery);
+
+    expect(result.rows[0].metadata).toEqual({
+      tags: ['test', 'bigquery'],
+      settings: { theme: 'dark' },
     });
   });
 
@@ -153,7 +179,7 @@ describe('BigQuery JSON Field Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // BigQuery connection should pass objects as-is
+    /* BigQuery connection should pass objects as-is */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO user_data (id, data) VALUES (?, ?)',
       params: [1, complexData]

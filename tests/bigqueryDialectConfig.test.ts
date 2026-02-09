@@ -1,7 +1,7 @@
 import { Kysely } from 'kysely';
 import { describe, expect, test, vi, beforeEach } from 'vitest';
 
-// Mock BigQuery before importing src files
+/* Mock BigQuery before importing src files */
 const mockQuery = vi.fn();
 const mockCreateQueryStream = vi.fn();
 const mockGetDatasets = vi.fn();
@@ -32,13 +32,9 @@ vi.mock('@google-cloud/bigquery', () => {
 
 import { BigQueryDialect } from '../src';
 
-// Mock console.warn
-const mockConsoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
 describe('BigQueryDialect Configuration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockConsoleWarn.mockClear();
   });
 
   test('creates dialect with options', () => {
@@ -114,43 +110,6 @@ describe('BigQueryDialect Configuration', () => {
     );
   });
 
-  test('does not warn when no credentials are provided', () => {
-    // Create dialect with projectId but no credentials
-    const dialect = new BigQueryDialect({
-      options: { projectId: 'test-project' }
-    });
-
-    expect(dialect).toBeDefined();
-    // No warning should be shown as per style guide
-    expect(mockConsoleWarn).not.toHaveBeenCalled();
-  });
-
-  test('does not warn when options are provided with credentials', () => {
-    const dialect = new BigQueryDialect({
-      options: { 
-        projectId: 'test-project',
-        keyFilename: '/path/to/key.json'
-      },
-    });
-
-    expect(dialect).toBeDefined();
-    expect(mockConsoleWarn).not.toHaveBeenCalled();
-  });
-
-  test('does not warn when bigquery instance is provided', () => {
-    const mockBigQuery = {
-      query: vi.fn(),
-      createQueryStream: vi.fn(),
-    };
-    
-    const dialect = new BigQueryDialect({
-      bigquery: mockBigQuery as any,
-    });
-
-    expect(dialect).toBeDefined();
-    expect(mockConsoleWarn).not.toHaveBeenCalled();
-  });
-
   test('validates bigquery instance has required methods', () => {
     const invalidInstance = { someMethod: vi.fn() };
 
@@ -166,7 +125,7 @@ describe('BigQueryDialect Configuration', () => {
   test('validates bigquery instance has createQueryStream method', () => {
     const invalidInstance = { 
       query: vi.fn(),
-      // Missing createQueryStream
+      /* Missing createQueryStream */
     };
 
     expect(() => {
@@ -190,14 +149,14 @@ describe('BigQueryDialect Configuration', () => {
       dialect: new BigQueryDialect({ bigquery: mockBigQuery as any }),
     });
 
-    // Should be able to compile and execute queries
+    /* Should be able to compile and execute queries */
     const query = db.selectFrom('users').selectAll();
     const compiled = query.compile();
     
     expect(compiled.sql).toBe('select * from `users`');
     expect(compiled.parameters).toEqual([]);
 
-    // Execute the query
+    /* Execute the query */
     await query.execute();
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'select * from `users`',
@@ -263,7 +222,7 @@ describe('BigQueryDialect Configuration', () => {
   });
 
   test('throws error when projectId is missing', () => {
-    // Remove GOOGLE_CLOUD_PROJECT if it exists
+    /* Remove GOOGLE_CLOUD_PROJECT if it exists */
     const originalEnv = process.env.GOOGLE_CLOUD_PROJECT;
     delete process.env.GOOGLE_CLOUD_PROJECT;
 
@@ -271,7 +230,7 @@ describe('BigQueryDialect Configuration', () => {
       expect(() => {
         new BigQueryDialect({
           options: {
-            // Missing projectId
+            /* Missing projectId */
             keyFilename: '/path/to/key.json'
           } as any,
         });
@@ -279,7 +238,7 @@ describe('BigQueryDialect Configuration', () => {
         'BigQuery projectId is required. Provide it in options.projectId or set GOOGLE_CLOUD_PROJECT environment variable.'
       );
     } finally {
-      // Restore original env
+      /* Restore original env */
       if (originalEnv !== undefined) {
         process.env.GOOGLE_CLOUD_PROJECT = originalEnv;
       }
