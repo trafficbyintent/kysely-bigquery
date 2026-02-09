@@ -170,13 +170,14 @@ export class JsonColumnDetector {
 
     const processedParams = [...params] as T[];
 
-    /* For INSERT queries */
-    if (columns && columns.length === params.length) {
-      columns.forEach((col, index) => {
-        if (this.shouldSerializeJson(tableName, col, params[index])) {
-          processedParams[index] = JSON.stringify(params[index]) as T;
+    /* For INSERT queries — handle single-row and multi-row inserts */
+    if (columns && columns.length > 0 && params.length >= columns.length && params.length % columns.length === 0) {
+      for (let i = 0; i < params.length; i++) {
+        const colIndex = i % columns.length;
+        if (this.shouldSerializeJson(tableName, columns[colIndex], params[i])) {
+          processedParams[i] = JSON.stringify(params[i]) as T;
         }
-      });
+      }
     }
 
     /* For UPDATE queries */

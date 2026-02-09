@@ -204,6 +204,42 @@ describe('BigQuery JSON Query Builder Handling', () => {
     });
   });
 
+  test('should stringify JSON fields in multi-row INSERT', async () => {
+    mockQuery.mockResolvedValue([[]]);
+
+    const meta1 = { role: 'admin' };
+    const meta2 = { role: 'user' };
+
+    const compiledQuery: CompiledQuery = {
+      sql: 'INSERT INTO users (id, name, metadata) VALUES (?, ?, ?), (?, ?, ?)',
+      parameters: [1, 'Alice', meta1, 2, 'Bob', meta2],
+      query: {
+        kind: 'InsertQueryNode',
+        into: {
+          kind: 'TableNode',
+          table: {
+            kind: 'SchemableIdentifierNode',
+            schema: { kind: 'IdentifierNode', name: 'test_dataset' },
+            identifier: { kind: 'IdentifierNode', name: 'users' }
+          }
+        },
+        columns: [
+          { kind: 'ColumnNode', column: { kind: 'IdentifierNode', name: 'id' } },
+          { kind: 'ColumnNode', column: { kind: 'IdentifierNode', name: 'name' } },
+          { kind: 'ColumnNode', column: { kind: 'IdentifierNode', name: 'metadata' } }
+        ]
+      } as any
+    };
+
+    await connection.executeQuery(compiledQuery);
+
+    /* Should stringify metadata in both rows */
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: 'INSERT INTO users (id, name, metadata) VALUES (?, ?, ?), (?, ?, ?)',
+      params: [1, 'Alice', JSON.stringify(meta1), 2, 'Bob', JSON.stringify(meta2)],
+    });
+  });
+
   test('should handle UPDATE with multiple JSON columns', async () => {
     mockQuery.mockResolvedValue([[]]);
 

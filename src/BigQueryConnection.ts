@@ -177,11 +177,39 @@ export class BigQueryConnection implements DatabaseConnection {
       if (param instanceof Buffer) {
         return 'BYTES';
       }
+      if (Array.isArray(param)) {
+        return this.#inferArrayType(param);
+      }
       if (typeof param === 'object') {
-        return 'JSON';
+        /*
+         * After processParameters, registered JSON values are already stringified
+         * to strings, so they never reach here. Remaining objects are STRUCTs or
+         * unregistered objects. BigQuery needs the full STRUCT<...> descriptor to
+         * use a provided type, which we can't infer generically. Returning 'STRING'
+         * is a safe fallback — BigQuery's SDK calls .toString() on the value.
+         */
+        return 'STRING';
       }
       return 'STRING';
     });
+  }
+
+  /**
+   * Infers the BigQuery ARRAY<T> type string from a JavaScript array's first element.
+   * Empty arrays default to ARRAY<STRING>.
+   */
+  #inferArrayType(param: unknown[]): string {
+    if (param.length === 0) {
+      return 'ARRAY<STRING>';
+    }
+    const first = param[0];
+    if (typeof first === 'number') {
+      return Number.isInteger(first) ? 'ARRAY<INT64>' : 'ARRAY<FLOAT64>';
+    }
+    if (typeof first === 'boolean') {
+      return 'ARRAY<BOOL>';
+    }
+    return 'ARRAY<STRING>';
   }
 
   /**

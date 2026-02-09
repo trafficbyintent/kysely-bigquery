@@ -392,7 +392,7 @@ describe('BigQuery Streaming', () => {
     expect(mockCreateQueryStream).toHaveBeenCalledWith({
       query: 'INSERT INTO test_table VALUES (?, ?, ?, ?, ?, ?, ?)',
       params: ['string', 42, true, date, buffer, { key: 'value' }, null],
-      types: ['STRING', 'INT64', 'BOOL', 'TIMESTAMP', 'BYTES', 'JSON', 'STRING']
+      types: ['STRING', 'INT64', 'BOOL', 'TIMESTAMP', 'BYTES', 'STRING', 'STRING']
     });
   });
 

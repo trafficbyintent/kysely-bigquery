@@ -363,9 +363,9 @@ describe('JsonColumnDetector', () => {
       expect(result).toEqual([1, 2, 3]);
     });
 
-    test('handles mismatched column and parameter counts', () => {
+    test('serializes JSON columns in multi-row INSERT', () => {
       const compiledQuery: CompiledQuery = {
-        sql: 'INSERT INTO dataset.users (metadata) VALUES (?)',
+        sql: 'INSERT INTO dataset.users (id, metadata) VALUES (?, ?), (?, ?)',
         parameters: [],
         query: {
           kind: 'InsertQueryNode',
@@ -377,17 +377,49 @@ describe('JsonColumnDetector', () => {
             },
           },
           columns: [
+            { column: { name: 'id' } },
             { column: { name: 'metadata' } },
           ],
         },
       };
 
-      /* More params than columns */
-      const params = [{ data: 'test' }, 'extra param'];
+      const meta1 = { role: 'admin' };
+      const meta2 = { role: 'user' };
+      const params = [1, meta1, 2, meta2];
       const result = detector.processParameters(compiledQuery, params);
-      
-      /* Should not process when counts don't match */
-      expect(result).toEqual([{ data: 'test' }, 'extra param']);
+
+      /* Should stringify metadata in both rows */
+      expect(result[0]).toBe(1);
+      expect(result[1]).toBe(JSON.stringify(meta1));
+      expect(result[2]).toBe(2);
+      expect(result[3]).toBe(JSON.stringify(meta2));
+    });
+
+    test('skips serialization when params length is not a multiple of columns', () => {
+      const compiledQuery: CompiledQuery = {
+        sql: 'INSERT INTO dataset.users (id, metadata) VALUES (?, ?)',
+        parameters: [],
+        query: {
+          kind: 'InsertQueryNode',
+          into: {
+            table: {
+              kind: 'SchemableIdentifierNode',
+              schema: { name: 'dataset' },
+              identifier: { name: 'users' },
+            },
+          },
+          columns: [
+            { column: { name: 'id' } },
+            { column: { name: 'metadata' } },
+          ],
+        },
+      };
+
+      /* 3 params for 2 columns — not a valid multiple, skip processing */
+      const params = [1, { data: 'test' }, 'orphan'];
+      const result = detector.processParameters(compiledQuery, params);
+
+      expect(result).toEqual([1, { data: 'test' }, 'orphan']);
     });
   });
 

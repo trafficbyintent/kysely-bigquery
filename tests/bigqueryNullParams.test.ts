@@ -144,7 +144,7 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO data_table (json_col, array_col, null_col) VALUES (?, ?, ?)',
       params: [jsonData, arrayData, null],
-      types: ['JSON', 'JSON', 'STRING']
+      types: ['STRING', 'ARRAY<INT64>', 'STRING']
     });
   });
 
@@ -165,7 +165,7 @@ describe('BigQuery Null Parameter Handling', () => {
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO complex_table VALUES (?, ?, ?, ?, ?, ?, ?)',
       params: ['string', 42, true, date, buffer, object, null],
-      types: ['STRING', 'INT64', 'BOOL', 'TIMESTAMP', 'BYTES', 'JSON', 'STRING']
+      types: ['STRING', 'INT64', 'BOOL', 'TIMESTAMP', 'BYTES', 'STRING', 'STRING']
     });
   });
 
@@ -200,6 +200,95 @@ describe('BigQuery Null Parameter Handling', () => {
       query: 'UPDATE stats SET count = ?, average = ?, total = ? WHERE id = ?',
       params: [100, 75.5, 0.1, null],
       types: ['INT64', 'FLOAT64', 'FLOAT64', 'STRING']
+    });
+  });
+
+  test('should infer ARRAY<STRING> for string arrays alongside null', async () => {
+    mockQuery.mockResolvedValue([[]]);
+
+    const tags = ['admin', 'user'];
+    const compiledQuery = CompiledQuery.raw(
+      'INSERT INTO users (tags, notes) VALUES (?, ?)',
+      [tags, null]
+    );
+
+    await connection.executeQuery(compiledQuery);
+
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: 'INSERT INTO users (tags, notes) VALUES (?, ?)',
+      params: [tags, null],
+      types: ['ARRAY<STRING>', 'STRING']
+    });
+  });
+
+  test('should infer ARRAY<INT64> for integer arrays alongside null', async () => {
+    mockQuery.mockResolvedValue([[]]);
+
+    const ids = [1, 2, 3];
+    const compiledQuery = CompiledQuery.raw(
+      'INSERT INTO data (ids, label) VALUES (?, ?)',
+      [ids, null]
+    );
+
+    await connection.executeQuery(compiledQuery);
+
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: 'INSERT INTO data (ids, label) VALUES (?, ?)',
+      params: [ids, null],
+      types: ['ARRAY<INT64>', 'STRING']
+    });
+  });
+
+  test('should infer ARRAY<FLOAT64> for float arrays alongside null', async () => {
+    mockQuery.mockResolvedValue([[]]);
+
+    const scores = [1.5, 2.7, 3.14];
+    const compiledQuery = CompiledQuery.raw(
+      'INSERT INTO metrics (scores, label) VALUES (?, ?)',
+      [scores, null]
+    );
+
+    await connection.executeQuery(compiledQuery);
+
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: 'INSERT INTO metrics (scores, label) VALUES (?, ?)',
+      params: [scores, null],
+      types: ['ARRAY<FLOAT64>', 'STRING']
+    });
+  });
+
+  test('should infer ARRAY<BOOL> for boolean arrays alongside null', async () => {
+    mockQuery.mockResolvedValue([[]]);
+
+    const flags = [true, false, true];
+    const compiledQuery = CompiledQuery.raw(
+      'INSERT INTO flags (values, label) VALUES (?, ?)',
+      [flags, null]
+    );
+
+    await connection.executeQuery(compiledQuery);
+
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: 'INSERT INTO flags (values, label) VALUES (?, ?)',
+      params: [flags, null],
+      types: ['ARRAY<BOOL>', 'STRING']
+    });
+  });
+
+  test('should infer ARRAY<STRING> for empty arrays alongside null', async () => {
+    mockQuery.mockResolvedValue([[]]);
+
+    const compiledQuery = CompiledQuery.raw(
+      'INSERT INTO data (tags, label) VALUES (?, ?)',
+      [[], null]
+    );
+
+    await connection.executeQuery(compiledQuery);
+
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: 'INSERT INTO data (tags, label) VALUES (?, ?)',
+      params: [[], null],
+      types: ['ARRAY<STRING>', 'STRING']
     });
   });
 });
