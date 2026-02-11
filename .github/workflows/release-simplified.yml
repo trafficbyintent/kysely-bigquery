@@ -28,8 +28,8 @@ jobs:
       - name: Build package
         run: npm run build
 
-      - name: Run tests
-        run: npm test
+      - name: Run tests with coverage
+        run: npm run test:coverage
 
       - name: Run lint
         run: npm run lint
@@ -40,7 +40,7 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "📦 Publishing version: $VERSION"
+          echo "Publishing version: $VERSION"
 
       # Publish to npm
       - name: Publish to npm
@@ -51,21 +51,21 @@ jobs:
       # Create GitHub Release
       - name: Create GitHub Release
         if: env.ACT != 'true'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.package-version.outputs.version }}
           name: Release v${{ steps.package-version.outputs.version }}
           body: |
-            ## 📦 @trafficbyintent/kysely-bigquery v${{ steps.package-version.outputs.version }}
-            
+            ## @trafficbyintent/kysely-bigquery v${{ steps.package-version.outputs.version }}
+
             ### What's Changed
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
-            
+
             ### Installation
             ```bash
             npm install @trafficbyintent/kysely-bigquery@${{ steps.package-version.outputs.version }}
             ```
-            
+
             ---
             Published to npm: https://www.npmjs.com/package/@trafficbyintent/kysely-bigquery
 
@@ -73,6 +73,6 @@ jobs:
       - name: Mock GitHub Release (act)
         if: env.ACT == 'true'
         run: |
-          echo "🏃 Running in act - mocking GitHub release creation"
-          echo "📦 Would create release: v${{ steps.package-version.outputs.version }}"
-          echo "✅ Release workflow completed successfully in test mode"
+          echo "Running in act - mocking GitHub release creation"
+          echo "Would create release: v${{ steps.package-version.outputs.version }}"
+          echo "Release workflow completed successfully in test mode"
