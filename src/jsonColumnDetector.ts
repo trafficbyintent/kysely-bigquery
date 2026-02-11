@@ -174,7 +174,8 @@ export class JsonColumnDetector {
     if (columns && columns.length > 0 && params.length >= columns.length && params.length % columns.length === 0) {
       for (let i = 0; i < params.length; i++) {
         const colIndex = i % columns.length;
-        if (this.shouldSerializeJson(tableName, columns[colIndex], params[i])) {
+        const colName = columns[colIndex];
+        if (colName && this.shouldSerializeJson(tableName, colName, params[i])) {
           processedParams[i] = JSON.stringify(params[i]) as T;
         }
       }
