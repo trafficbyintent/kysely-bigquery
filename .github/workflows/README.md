@@ -7,83 +7,49 @@ This directory contains GitHub Actions workflows and related configuration for c
 ```
 .github/
 ├── workflows/
-│   ├── ci.yml                # Continuous Integration (runs on push/PR)
-│   ├── release.yml           # Automated npm publishing (on tag/manual)
-│   ├── release-simplified.yml # Simplified release (recommended)
-│   ├── version-bump.yml      # Version bumping reference (disabled)
-│   ├── publish.yml           # GitHub Packages publishing
-│   └── manual-release.yml    # Create release PRs with changelog
-├── act-events/             # Event payloads for local testing
-│   ├── push.json          # Simulates push to main branch
-│   ├── pull_request.json  # Simulates PR event
-│   ├── tag.json           # Simulates tag push event
+│   ├── ci.yml                 # Continuous Integration (runs on push/PR to main)
+│   ├── release-simplified.yml # Publish to npm and create GitHub release
+│   └── manual-release.yml     # Create release PRs with version bump and changelog
+├── act-events/                # Event payloads for local testing
+│   ├── push.json              # Simulates push to main branch
+│   ├── pull_request.json      # Simulates PR event
+│   ├── tag.json               # Simulates tag push event
 │   └── workflow_dispatch.json # Simulates manual trigger
-├── test-actions.sh        # Test workflows locally with act
-└── validate-workflows.sh  # Validate workflow syntax without Docker
+├── test-actions.sh            # Test workflows locally with act
+└── validate-workflows.sh      # Validate workflow syntax without Docker
 ```
 
 ## Workflows Overview
 
 ### 1. CI (ci.yml)
-**Trigger**: On push to main/master/develop branches and on pull requests
+**Trigger**: On push to `main` and on pull requests targeting `main`
 
-**Purpose**: Run tests and build checks to guard against regressions
+**Purpose**: Run linting, tests with coverage enforcement, and build checks
 
 **Jobs**:
+- **Lint Check (Required)**:
+  - Runs ESLint
+  - Checks Prettier formatting via `npm run format:check`
 - **Test**: Runs on Ubuntu with Node.js 18.x, 20.x, and 22.x
-  - Installs dependencies
   - Builds the project
-  - Runs unit tests
-  - Optionally runs integration tests (only on push events if credentials are configured)
+  - Runs unit tests with coverage thresholds (`npm run test:coverage`)
+  - Optionally runs integration tests (only on push if credentials are configured)
   - Validates package can be packed
 
-### 2. Release (release.yml)
-**Trigger**: 
-- On push of version tags (e.g., v1.0.0)
-- On GitHub release creation
-- Manual workflow dispatch with version input
-
-**Purpose**: Automated releases to npm
-
-**Jobs**:
-- **Publish**: 
-  - Builds and tests the package
-  - Updates version if manually triggered
-  - Publishes to npm with public access
-  - Creates GitHub release for tag pushes
-
-### 3. Release Simplified (release-simplified.yml)
+### 2. Release Simplified (release-simplified.yml)
 **Trigger**: Manual workflow dispatch only
 
-**Purpose**: Simplified release workflow following TXI style-guide recommendations
+**Purpose**: Publish the current version from package.json to npm and create a GitHub release
 
 **Jobs**:
 - **Publish**:
+  - Builds and tests with coverage enforcement
+  - Runs linting
   - Reads version from package.json (no version input needed)
-  - Builds and tests the package
   - Publishes to npm registry as public package
-  - Creates GitHub release with appropriate tag
+  - Creates GitHub release with tag
 
-### 4. Publish (publish.yml)
-**Trigger**: 
-- Manual workflow dispatch
-- Called from other workflows
-
-**Purpose**: Dedicated workflow for publishing to npm
-
-**Jobs**:
-- **Publish**: 
-  - Builds the package
-  - Publishes to npm registry as public package
-
-### 5. Version Bump (version-bump.yml)
-**Trigger**: Manual workflow dispatch (currently disabled)
-
-**Purpose**: Reference implementation for automated version bumping
-
-**Note**: This workflow is disabled by default (`if: false`) and kept for reference. Version management should be done locally.
-
-### 6. Manual Release (manual-release.yml)
+### 3. Manual Release (manual-release.yml)
 **Trigger**: Manual workflow dispatch with release type and message
 
 **Purpose**: Create a release pull request with version bump and changelog update
@@ -100,7 +66,6 @@ This directory contains GitHub Actions workflows and related configuration for c
 ### Required GitHub Secrets
 
 To enable full CI functionality, configure these secrets in your repository settings:
-
 
 #### 1. NPM_TOKEN (Required for Publishing)
 
@@ -137,6 +102,12 @@ Integration tests only run on push events to protected branches when these secre
 4. Create and download a JSON key
 5. Copy the entire JSON content as the `BIGQUERY_CREDENTIALS` secret
 
+### npm Authentication
+
+All workflows pass `NPM_TOKEN` and `GITHUB_TOKEN` as environment variables to `npm ci`. The checked-in `.npmrc` uses these variables to authenticate with both the npm registry (for publishing) and GitHub Packages (for the `@trafficbyintent` scope).
+
+**Do not overwrite `.npmrc` in CI** — the checked-in file already has the correct registry scoping.
+
 ## Local Testing with Act
 
 You can test GitHub Actions workflows locally using `act` before pushing changes.
@@ -152,7 +123,7 @@ You can test GitHub Actions workflows locally using `act` before pushing changes
    ```bash
    # macOS
    brew install act
-   
+
    # Linux/WSL
    curl https://raw.githubusercontent.com/nektos/act/master/install.sh | bash
    ```
@@ -191,7 +162,7 @@ act push -W .github/workflows/ci.yml --secret-file .secrets
 act pull_request -W .github/workflows/ci.yml --secret-file .secrets
 
 # Test release (dry run)
-act push -W .github/workflows/release.yml --eventpath .github/act-events/tag.json --secret-file .secrets --dry-run
+act -W .github/workflows/release-simplified.yml --eventpath .github/act-events/workflow_dispatch.json --secret-file .secrets
 ```
 
 **Without Docker** (quick validation):
@@ -211,24 +182,6 @@ We use a **manual version management** approach where version updates are done l
 - Makes version history clear in git log
 - Simplifies the CI/CD pipeline
 
-### Release Workflows
-
-#### 1. **release-simplified.yml** (Recommended)
-- **Trigger**: Manual workflow dispatch only
-- **Purpose**: Publishes the current version from package.json to npm
-- **No version input**: Reads version directly from package.json
-- **Creates GitHub release**: Automatically tags and creates release
-
-#### 2. **release.yml** (Legacy)
-- Supports multiple trigger methods (tags, manual)
-- Has version input for workflow dispatch
-- More complex but flexible
-
-#### 3. **version-bump.yml** (Reference Only)
-- Currently disabled (if: false)
-- Documents automated version bumping approach
-- Kept for reference but not recommended
-
 ### Step-by-Step Release Process
 
 #### 1. Local Version Management
@@ -246,9 +199,6 @@ npm version major --no-git-tag-version  # For breaking changes (1.4.4 -> 2.0.0)
 
 # Option B: Manually edit package.json
 # Edit the "version" field directly
-
-# 3. Update CHANGELOG.md
-# Add release notes following Keep a Changelog format
 ```
 
 #### 2. Update Documentation
@@ -293,7 +243,7 @@ git push origin main
 
 The workflow will:
 - Read version from package.json
-- Run tests and linting
+- Run tests with coverage enforcement and linting
 - Build the package
 - Publish to npm registry as public package
 - Create a GitHub release with tag `v1.4.5`
@@ -307,6 +257,16 @@ npm view @trafficbyintent/kysely-bigquery@1.4.5
 # Check GitHub Releases
 # Visit: https://github.com/trafficbyintent/kysely-bigquery/releases
 ```
+
+### Alternative: Manual Release Workflow
+
+For a more automated approach, use the Manual Release workflow:
+
+1. Go to GitHub Actions tab
+2. Select "Manual Release" workflow
+3. Choose release type (patch/minor/major) and provide a release message
+4. The workflow creates a PR with version bump and changelog updates
+5. After merging the PR, run "Release (Simplified)" to publish
 
 ### Beta/Pre-release Versions
 
