@@ -1,5 +1,5 @@
 {
-  "extends": "./node_modules/@trafficbyintent/style-guide/src/typescript/tsconfig.base.json",
+  "extends": "./node_modules/@trafficbyintent/linters/src/typescript/tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist",
@@ -9,7 +9,8 @@
     "lib": ["ES2015", "ES2020.BigInt"],
     "paths": {},
     "resolvePackageJsonExports": false,
-    "resolvePackageJsonImports": false
+    "resolvePackageJsonImports": false,
+    "types": ["node", "vitest/globals"]
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.integration.test.ts"]

@@ -4,7 +4,7 @@ import { Readable } from 'stream';
 
 import { BigQueryDialect, BigQueryConnection } from '../src';
 
-// Mock the BigQuery client
+/* Mock the BigQuery client */
 const mockQuery = vi.fn();
 const mockCreateQueryStream = vi.fn();
 
@@ -32,11 +32,11 @@ describe('BigQuery Streaming', () => {
       { id: 3, name: 'Charlie' },
     ];
 
-    // Create a mock readable stream
+    /* Create a mock readable stream */
     const mockStream = new Readable({
       objectMode: true,
       read() {
-        // Push test rows one by one
+        /* Push test rows one by one */
         if (testRows.length > 0) {
           this.push(testRows.shift());
         } else {
@@ -64,6 +64,7 @@ describe('BigQuery Streaming', () => {
     expect(mockCreateQueryStream).toHaveBeenCalledWith({
       query: 'SELECT * FROM users',
       params: [],
+      parseJSON: true,
     });
   });
 
@@ -100,7 +101,7 @@ describe('BigQuery Streaming', () => {
 
     await expect(async () => {
       for await (const _ of stream) {
-        // Should throw before yielding any results
+        /* Should throw before yielding any results */
       }
     }).rejects.toThrow('BigQuery stream query failed: Failed to create stream');
   });
@@ -113,7 +114,7 @@ describe('BigQuery Streaming', () => {
         if (!errorEmitted) {
           this.push({ id: 1, name: 'Alice' });
           errorEmitted = true;
-          // Emit error on next tick
+          /* Emit error on next tick */
           process.nextTick(() => {
             this.destroy(new Error('Stream error'));
           });
@@ -134,7 +135,7 @@ describe('BigQuery Streaming', () => {
       }
     }).rejects.toThrow('BigQuery stream error: Stream error');
 
-    // Should have collected one result before the error
+    /* Should have collected one result before the error */
     expect(results).toHaveLength(1);
   });
 
@@ -161,6 +162,7 @@ describe('BigQuery Streaming', () => {
     expect(mockCreateQueryStream).toHaveBeenCalledWith({
       query: 'SELECT * FROM users WHERE age > ?',
       params: [21],
+      parseJSON: true,
     });
     expect(results).toHaveLength(1);
   });
@@ -176,7 +178,7 @@ describe('BigQuery Streaming', () => {
 
     await expect(async () => {
       for await (const _ of stream) {
-        // Should throw
+        /* Should throw */
       }
     }).rejects.toBe('String error');
   });
@@ -186,17 +188,16 @@ describe('BigQuery Streaming', () => {
       dialect: new BigQueryDialect(),
     });
 
-    // The stream method should be available on queries
+    /* The stream method should be available on queries */
     const query = kysely.selectFrom('users').selectAll();
     expect(query.stream).toBeDefined();
     expect(typeof query.stream).toBe('function');
   });
 
-  test('streamQuery handles JSON parsing in results', async () => {
+  test('streamQuery does not auto-parse JSON without registration', async () => {
     const testRows = [
-      { id: 1, metadata: '{"role": "admin", "permissions": ["read", "write"]}' },
+      { id: 1, metadata: '{"role": "admin"}' },
       { id: 2, metadata: '[1, 2, 3]' },
-      { id: 3, metadata: 'not json' }, /* Should not be parsed */
     ];
 
     const mockStream = new Readable({
@@ -220,9 +221,48 @@ describe('BigQuery Streaming', () => {
       results.push(result);
     }
 
-    /* JSON strings should be parsed */
+    /* Without jsonColumns config, JSON strings are returned as-is */
+    expect(results[0].rows[0].metadata).toBe('{"role": "admin"}');
+    expect(results[1].rows[0].metadata).toBe('[1, 2, 3]');
+  });
+
+  test('streamQuery parses registered JSON columns', async () => {
+    const registeredConnection = new BigQueryConnection({
+      options: { projectId: 'test-project' },
+      jsonColumns: { 'dataset.users': ['metadata'] },
+    });
+
+    const testRows = [
+      { id: 1, metadata: '{"role": "admin", "permissions": ["read", "write"]}' },
+      { id: 2, metadata: '[1, 2, 3]' },
+      { id: 3, metadata: 'not json' },
+    ];
+
+    const mockStream = new Readable({
+      objectMode: true,
+      read() {
+        if (testRows.length > 0) {
+          this.push(testRows.shift());
+        } else {
+          this.push(null);
+        }
+      },
+    });
+
+    mockCreateQueryStream.mockReturnValue(mockStream);
+
+    const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
+    const results: any[] = [];
+    const stream = registeredConnection.streamQuery(compiledQuery, 1);
+
+    for await (const result of stream) {
+      results.push(result);
+    }
+
+    /* Registered JSON columns are parsed */
     expect(results[0].rows[0].metadata).toEqual({ role: 'admin', permissions: ['read', 'write'] });
     expect(results[1].rows[0].metadata).toEqual([1, 2, 3]);
+    /* Non-JSON-looking strings are returned as-is even for registered columns */
     expect(results[2].rows[0].metadata).toBe('not json');
   });
 
@@ -317,7 +357,8 @@ describe('BigQuery Streaming', () => {
     expect(mockCreateQueryStream).toHaveBeenCalledWith({
       query: 'SELECT * FROM users WHERE email = ? OR status = ?',
       params: [null, 'active'],
-      types: ['STRING', 'STRING']
+      types: ['STRING', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -354,7 +395,8 @@ describe('BigQuery Streaming', () => {
     expect(mockCreateQueryStream).toHaveBeenCalledWith({
       query: 'INSERT INTO test_table VALUES (?, ?, ?, ?, ?, ?, ?)',
       params: ['string', 42, true, date, buffer, { key: 'value' }, null],
-      types: ['STRING', 'INT64', 'BOOL', 'TIMESTAMP', 'BYTES', 'JSON', 'STRING']
+      types: ['STRING', 'INT64', 'BOOL', 'TIMESTAMP', 'BYTES', 'STRING', 'STRING'],
+      parseJSON: true,
     });
   });
 
@@ -389,19 +431,23 @@ describe('BigQuery Streaming', () => {
     expect(mockCreateQueryStream).toHaveBeenCalledWith({
       query: 'SELECT * FROM measurements WHERE value > ? AND price < ? AND ratio = ?',
       params: [3.14159, 99.99, null],
-      types: ['FLOAT64', 'FLOAT64', 'STRING']
+      types: ['FLOAT64', 'FLOAT64', 'STRING'],
+      parseJSON: true,
     });
   });
 
-  test('streamQuery handles JSON parse errors in likely JSON columns', async () => {
-    /* Create rows with JSON-like column names that will trigger the JSON parsing attempt */
+  test('streamQuery handles JSON parse errors in registered columns', async () => {
+    const registeredConnection = new BigQueryConnection({
+      options: { projectId: 'test-project' },
+      jsonColumns: { 'dataset.users': ['metadata', 'settings'] },
+    });
+
     const testRows = [
-      { 
-        id: 1, 
+      {
+        id: 1,
         metadata: '{"valid": "json"}',
-        /* This string will cause JSON.parse to throw */
-        settings: '{"malformed": json}'
-      }
+        settings: '{"malformed": json}',
+      },
     ];
 
     const mockStream = new Readable({
@@ -417,11 +463,10 @@ describe('BigQuery Streaming', () => {
 
     mockCreateQueryStream.mockReturnValue(mockStream);
 
-    /* Create connection that will try to parse likely JSON columns */
     const compiledQuery = CompiledQuery.raw('SELECT * FROM users', []);
 
     const results: any[] = [];
-    const stream = connection.streamQuery(compiledQuery, 10);
+    const stream = registeredConnection.streamQuery(compiledQuery, 10);
 
     for await (const result of stream) {
       results.push(result);
@@ -429,11 +474,11 @@ describe('BigQuery Streaming', () => {
 
     expect(results).toHaveLength(1);
     const row = results[0].rows[0];
-    
+
     /* Valid JSON strings should be parsed */
     expect(row.metadata).toEqual({ valid: 'json' });
-    
-    /* Malformed JSON should remain as string (catch block coverage) */
+
+    /* Malformed JSON should remain as string */
     expect(row.settings).toBe('{"malformed": json}');
   });
 });

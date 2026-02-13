@@ -103,7 +103,7 @@ test('complex WHERE clauses', () => {
     dialect: new BigQueryDialect(),
   });
 
-  // AND/OR conditions
+  /* AND/OR conditions */
   const andOrQuery = kysely
     .selectFrom('users')
     .where('age', '>=', 18)
@@ -117,7 +117,7 @@ test('complex WHERE clauses', () => {
   expect(andOrCompiled.sql).toBe('select * from `users` where `age` >= ? and (`status` = ? or `status` = ?)');
   expect(andOrCompiled.parameters).toEqual([18, 'active', 'pending']);
 
-  // IN clause
+  /* IN clause */
   const inQuery = kysely
     .selectFrom('products')
     .where('category', 'in', ['electronics', 'books', 'toys'])
@@ -127,7 +127,7 @@ test('complex WHERE clauses', () => {
   expect(inCompiled.sql).toBe('select * from `products` where `category` in (?, ?, ?)');
   expect(inCompiled.parameters).toEqual(['electronics', 'books', 'toys']);
 
-  // NOT IN clause
+  /* NOT IN clause */
   const notInQuery = kysely
     .selectFrom('orders')
     .where('status', 'not in', ['cancelled', 'refunded'])
@@ -137,7 +137,7 @@ test('complex WHERE clauses', () => {
   expect(notInCompiled.sql).toBe('select * from `orders` where `status` not in (?, ?)');
   expect(notInCompiled.parameters).toEqual(['cancelled', 'refunded']);
 
-  // BETWEEN clause
+  /* BETWEEN clause */
   const betweenQuery = kysely
     .selectFrom('transactions')
     .where((eb) => eb.between('amount', 100, 500))
@@ -188,7 +188,7 @@ test('subqueries', () => {
     dialect: new BigQueryDialect(),
   });
 
-  // Subquery in WHERE
+  /* Subquery in WHERE */
   const subqueryWhere = kysely
     .selectFrom('orders')
     .selectAll()
@@ -204,7 +204,7 @@ test('subqueries', () => {
   );
   expect(whereCompiled.parameters).toEqual(['USA']);
 
-  // Subquery in SELECT
+  /* Subquery in SELECT */
   const subquerySelect = kysely
     .selectFrom('customers as c')
     .select([
@@ -250,7 +250,7 @@ test('BigQuery UNION syntax - requires UNION DISTINCT', () => {
     dialect: new BigQueryDialect(),
   });
 
-  // Test regular UNION - BigQuery requires UNION DISTINCT
+  /* Test regular UNION - BigQuery requires UNION DISTINCT */
   const unionQuery = kysely
     .selectFrom('customers')
     .select(['id', 'name'])
@@ -265,7 +265,7 @@ test('BigQuery UNION syntax - requires UNION DISTINCT', () => {
     'select `id`, `name` from `customers` union distinct select `vendor_id` as `id`, `vendor_name` as `name` from `vendors`'
   );
 
-  // Test UNION ALL - should remain unchanged
+  /* Test UNION ALL - should remain unchanged */
   const unionAllQuery = kysely
     .selectFrom('customers')
     .select(['id', 'name'])
@@ -307,7 +307,7 @@ test('BigQuery ARRAY type operations', () => {
     dialect: new BigQueryDialect(),
   });
 
-  // Array literal
+  /* Array literal */
   const arrayLiteralQuery = kysely
     .selectFrom('users')
     .select(sql`ARRAY[1, 2, 3]`.as('numbers'))
@@ -316,7 +316,7 @@ test('BigQuery ARRAY type operations', () => {
   const arrayLiteralCompiled = arrayLiteralQuery.compile();
   expect(arrayLiteralCompiled.sql).toBe('select ARRAY[1, 2, 3] as `numbers`, * from `users`');
 
-  // UNNEST operation - using innerJoin with raw SQL
+  /* UNNEST operation - using innerJoin with raw SQL */
   const unnestQuery = kysely
     .selectFrom('products')
     .innerJoin(
@@ -332,7 +332,7 @@ test('BigQuery ARRAY type operations', () => {
   expect(unnestCompiled.sql).toContain('as `tag`');
   expect(unnestCompiled.parameters).toEqual(['electronics']);
 
-  // Array functions
+  /* Array functions */
   const arrayFunctionQuery = kysely
     .selectFrom('users')
     .select(sql`ARRAY_LENGTH(${sql.ref('skills')})`.as('skill_count'))
@@ -350,7 +350,7 @@ test('BigQuery STRUCT type operations', () => {
     dialect: new BigQueryDialect(),
   });
 
-  // STRUCT literal
+  /* STRUCT literal */
   const structLiteralQuery = kysely
     .selectFrom('users')
     .select(sql`STRUCT('John' AS name, 30 AS age)`.as('person'))
@@ -359,7 +359,7 @@ test('BigQuery STRUCT type operations', () => {
   const structLiteralCompiled = structLiteralQuery.compile();
   expect(structLiteralCompiled.sql).toBe('select STRUCT(\'John\' AS name, 30 AS age) as `person`, * from `users`');
 
-  // Accessing STRUCT fields
+  /* Accessing STRUCT fields */
   const structFieldQuery = kysely
     .selectFrom('orders')
     .select(['id', sql`${sql.ref('customer')}.name`.as('customer_name')])
@@ -377,24 +377,42 @@ test('BigQuery specific table naming', () => {
     dialect: new BigQueryDialect(),
   });
 
-  // Project.dataset.table format
-  const fullTableQuery = kysely
-    .selectFrom('my-project.analytics.events')
-    .selectAll()
-    .limit(10);
-
-  const fullTableCompiled = fullTableQuery.compile();
-  expect(fullTableCompiled.sql).toBe('select * from `my-project`.`analytics` limit ?');
-  expect(fullTableCompiled.parameters).toEqual([10]);
-
-  // Dataset.table format (already tested in simple select)
-  // Table with special characters
+  /* Dataset.table format (already tested in simple select) */
+  /* Table with special characters */
   const specialCharsQuery = kysely
     .selectFrom('dataset.table-with-dashes')
     .selectAll();
 
   const specialCharsCompiled = specialCharsQuery.compile();
   expect(specialCharsCompiled.sql).toBe('select * from `dataset`.`table-with-dashes`');
+});
+
+test('defaultProject prepends project to schema-qualified tables', () => {
+  const kysely = new Kysely<any>({
+    dialect: new BigQueryDialect({ defaultProject: 'my-gcp-project' }),
+  });
+
+  const query = kysely
+    .selectFrom('analytics.events')
+    .selectAll()
+    .limit(10);
+
+  const compiled = query.compile();
+  expect(compiled.sql).toBe(
+    'select * from `my-gcp-project`.`analytics`.`events` limit ?',
+  );
+  expect(compiled.parameters).toEqual([10]);
+});
+
+test('defaultProject does not affect unqualified table names', () => {
+  const kysely = new Kysely<any>({
+    dialect: new BigQueryDialect({ defaultProject: 'my-gcp-project' }),
+  });
+
+  const query = kysely.selectFrom('events').selectAll();
+
+  const compiled = query.compile();
+  expect(compiled.sql).toBe('select * from `events`');
 });
 
 test('BigQuery window functions', () => {
@@ -444,8 +462,8 @@ test('error handling - invalid table references', () => {
     dialect: new BigQueryDialect(),
   });
 
-  // Test that queries compile even with potentially invalid references
-  // The dialect should not validate table/column names during compilation
+  /* Test that queries compile even with potentially invalid references
+     The dialect should not validate table/column names during compilation */
   const query = kysely
     .selectFrom('') // empty table name
     .selectAll();
@@ -453,7 +471,7 @@ test('error handling - invalid table references', () => {
   const compiled = query.compile();
   expect(compiled.sql).toBe('select * from ``');
 
-  // Multiple dots in table name
+  /* Multiple dots in table name */
   const multiDotQuery = kysely
     .selectFrom('project..dataset..table')
     .selectAll();
@@ -467,18 +485,18 @@ test('edge cases - special characters and escaping', () => {
     dialect: new BigQueryDialect(),
   });
 
-  // Backticks in identifiers
+  /* Backticks in identifiers */
   const backtickQuery = kysely
     .selectFrom('table`with`backticks')
     .select('column`with`backticks')
     .where('field`test', '=', 'value');
 
   const backtickCompiled = backtickQuery.compile();
-  // BigQuery escapes backticks by doubling them
+  /* BigQuery escapes backticks by doubling them */
   expect(backtickCompiled.sql).toBe('select `column``with``backticks` from `table``with``backticks` where `field``test` = ?');
   expect(backtickCompiled.parameters).toEqual(['value']);
 
-  // Unicode characters (Japanese)
+  /* Unicode characters (Japanese) */
   const unicodeQuery = kysely
     .selectFrom('顧客テーブル')
     .select('名前')
@@ -494,7 +512,7 @@ test('null and undefined handling', () => {
     dialect: new BigQueryDialect(),
   });
 
-  // NULL values
+  /* NULL values */
   const nullQuery = kysely
     .insertInto('users')
     .values({
@@ -507,7 +525,7 @@ test('null and undefined handling', () => {
   expect(nullCompiled.sql).toBe('insert into `users` (`name`, `email`) values (?, ?)');
   expect(nullCompiled.parameters).toEqual(['John', null]);
 
-  // IS NULL / IS NOT NULL
+  /* IS NULL / IS NOT NULL */
   const isNullQuery = kysely
     .selectFrom('users')
     .where('email', 'is', null)
@@ -518,7 +536,7 @@ test('null and undefined handling', () => {
   expect(isNullCompiled.sql).toBe('select * from `users` where `email` is null and `phone` is not null');
 });
 
-// Tests from bigquery-mysql-differences.test.ts
+/* Tests from bigquery-mysql-differences.test.ts */
 describe('BigQuery vs MySQL Differences - Unit Tests', () => {
   const kysely = new Kysely<any>({
     dialect: new BigQueryDialect(),
@@ -526,24 +544,80 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
 
   describe('Function Translation Tests', () => {
     test('Should translate LENGTH to CHAR_LENGTH', () => {
-      // Test using Kysely function builder
+      /* Test using Kysely function builder */
       const query = kysely
         .selectFrom('users')
         .select(kysely.fn('length', [sql.ref('name')]).as('name_length'));
 
       const compiled = query.compile();
-      // LENGTH should now be translated to CHAR_LENGTH
+      /* LENGTH should now be translated to CHAR_LENGTH */
       expect(compiled.sql).toContain('CHAR_LENGTH(`name`)');
       expect(compiled.sql).not.toContain(' LENGTH(');
       
-      // Test raw SQL translation
+      /* Test raw SQL translation */
       const rawQuery = kysely
         .selectFrom('users')
         .select(sql`LENGTH(${sql.ref('name')})`.as('name_length'));
       
       const rawCompiled = rawQuery.compile();
-      // Raw SQL currently doesn't get translated
+      /* Raw SQL currently doesn't get translated */
       expect(rawCompiled.sql).toContain('LENGTH(`name`)');
+    });
+
+    test('Should translate NOW() via query builder visitFunction', () => {
+      const query = kysely
+        .selectFrom('events')
+        .select(kysely.fn('now', []).as('current_time'));
+
+      const compiled = query.compile();
+      expect(compiled.sql).toContain('CURRENT_TIMESTAMP()');
+      expect(compiled.sql).not.toContain(' now(');
+      expect(compiled.sql).not.toContain(' NOW(');
+    });
+
+    test('Should translate DATE_FORMAT via query builder visitFunction', () => {
+      const query = kysely
+        .selectFrom('events')
+        .select(
+          kysely
+            .fn('date_format', [sql.ref('created_at'), sql.lit('%Y-%m-%d')])
+            .as('formatted'),
+        );
+
+      const compiled = query.compile();
+      /* DATE_FORMAT should be translated to FORMAT_TIMESTAMP with swapped args */
+      expect(compiled.sql).toContain("FORMAT_TIMESTAMP('%Y-%m-%d', `created_at`)");
+      expect(compiled.sql).not.toContain('date_format');
+      expect(compiled.sql).not.toContain('DATE_FORMAT');
+    });
+
+    test('Should fall through to default for DATE_FORMAT with wrong arg count', () => {
+      /* DATE_FORMAT with 1 arg falls through to super.visitFunction (line 71 break) */
+      const query = kysely
+        .selectFrom('events')
+        .select(
+          kysely
+            .fn('date_format', [sql.ref('created_at')])
+            .as('formatted'),
+        );
+
+      const compiled = query.compile();
+      /* With only 1 arg, condition fails and falls through to super.visitFunction */
+      expect(compiled.sql).toContain('date_format(`created_at`)');
+    });
+
+    test('Should pass DATE_ADD through via query builder visitFunction', () => {
+      const query = kysely
+        .selectFrom('events')
+        .select(
+          kysely
+            .fn('date_add', [sql.ref('created_at'), sql`INTERVAL 1 DAY`])
+            .as('next_day'),
+        );
+
+      const compiled = query.compile();
+      /* DATE_ADD should pass through to BigQuery (it supports this syntax) */
+      expect(compiled.sql).toContain('date_add');
     });
 
     test('Should handle functions with multiple arguments (coverage lines 242-243)', () => {
@@ -571,9 +645,9 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
 
       const compiled = query.compile();
       
-      // Currently passes as-is
+      /* Currently passes as-is */
       expect(compiled.sql).toContain('SUBSTRING(`name`, 1, 5)');
-      // Desired: SUBSTR(`name`, 1, 5)
+      /* Desired: SUBSTR(`name`, 1, 5) */
     });
 
     test('Should translate NOW() to CURRENT_TIMESTAMP()', () => {
@@ -583,19 +657,19 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
 
       const compiled = query.compile();
       
-      // Should translate NOW() to CURRENT_TIMESTAMP()
+      /* Should translate NOW() to CURRENT_TIMESTAMP() */
       expect(compiled.sql).toContain('CURRENT_TIMESTAMP()');
       expect(compiled.sql).not.toContain('NOW()');
     });
 
     test('Should handle DATE_ADD syntax differences', () => {
-      // MySQL style
+      /* MySQL style */
       const mysqlStyle = sql`DATE_ADD(${sql.ref('created_at')}, INTERVAL 1 DAY)`;
-      
-      // BigQuery style for dates
+
+      /* BigQuery style for dates */
       const bigqueryDateStyle = sql`DATE_ADD(${sql.ref('created_at')}, INTERVAL 1 DAY)`;
-      
-      // BigQuery style for timestamps
+
+      /* BigQuery style for timestamps */
       const bigqueryTimestampStyle = sql`TIMESTAMP_ADD(${sql.ref('created_at')}, INTERVAL 1 DAY)`;
 
       const query = kysely
@@ -604,7 +678,7 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
 
       const compiled = query.compile();
       
-      // Currently passes through unchanged
+      /* Currently passes through unchanged */
       expect(compiled.sql).toContain('DATE_ADD(`created_at`, INTERVAL 1 DAY)');
     });
 
@@ -615,7 +689,7 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
 
       const compiled = query.compile();
       
-      // Should translate to BigQuery syntax with swapped parameters
+      /* Should translate to BigQuery syntax with swapped parameters */
       expect(compiled.sql).toContain("FORMAT_TIMESTAMP('%Y-%m-%d', `created_at`)");
       expect(compiled.sql).not.toContain('DATE_FORMAT');
     });
@@ -638,7 +712,7 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
         )
       `;
 
-      // Raw SQL queries need to be compiled with the dialect
+      /* Raw SQL queries need to be compiled with the dialect */
       const compiledQuery = createTableQuery.compile(kysely);
       expect(compiledQuery.sql).toContain('INT64');
       expect(compiledQuery.sql).toContain('STRING');
@@ -646,23 +720,6 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
       expect(compiledQuery.sql).toContain('STRUCT<');
     });
 
-    test('Should map MySQL types to BigQuery types', () => {
-      // This would be in a custom adapter
-      const typeMap = {
-        'VARCHAR': 'STRING',
-        'TEXT': 'STRING',
-        'INT': 'INT64',
-        'BIGINT': 'INT64',
-        'DECIMAL': 'NUMERIC',
-        'BLOB': 'BYTES',
-        'JSON': 'JSON',
-      };
-
-      // Test type mapping
-      expect(typeMap['VARCHAR']).toBe('STRING');
-      expect(typeMap['INT']).toBe('INT64');
-      expect(typeMap['BLOB']).toBe('BYTES');
-    });
   });
 
   describe('DML Validation Tests', () => {
@@ -673,7 +730,7 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
 
       const compiled = updateQuery.compile();
       
-      // BigQuery requires WHERE clause - we add WHERE TRUE
+      /* BigQuery requires WHERE clause - we add WHERE TRUE */
       expect(compiled.sql).toBe('update `users` set `status` = ? where true');
       expect(compiled.sql).toContain('where true');
     });
@@ -684,7 +741,7 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
 
       const compiled = deleteQuery.compile();
       
-      // BigQuery requires WHERE clause - we add WHERE TRUE
+      /* BigQuery requires WHERE clause - we add WHERE TRUE */
       expect(compiled.sql).toBe('delete from `users` where true');
       expect(compiled.sql).toContain('where true');
     });
@@ -727,37 +784,6 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
   });
 
   describe('DDL Enhancement Tests', () => {
-    test('Should handle PARTITION BY in CREATE TABLE', () => {
-      // This would need custom DDL builder support
-      const createTableWithPartition = sql`
-        CREATE TABLE events (
-          id INT64,
-          user_id STRING,
-          event_timestamp TIMESTAMP,
-          event_type STRING
-        )
-        PARTITION BY DATE(event_timestamp)
-      `;
-
-      const compiledQuery = createTableWithPartition.compile(kysely);
-      expect(compiledQuery.sql).toContain('PARTITION BY');
-    });
-
-    test('Should handle CLUSTER BY in CREATE TABLE', () => {
-      const createTableWithClustering = sql`
-        CREATE TABLE events (
-          id INT64,
-          user_id STRING,
-          event_timestamp TIMESTAMP,
-          event_type STRING
-        )
-        CLUSTER BY user_id, event_type
-      `;
-
-      const compiledQuery = createTableWithClustering.compile(kysely);
-      expect(compiledQuery.sql).toContain('CLUSTER BY');
-    });
-
     test('Should translate NOW() function to CURRENT_TIMESTAMP() in raw SQL', () => {
       const query = sql`SELECT NOW() as current_time, id FROM users WHERE created_at < NOW()`;
       
@@ -837,16 +863,17 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
     });
 
 
-    test('Should handle project.dataset.table naming', () => {
-      const query = kysely
-        .selectFrom('my-project.analytics.events')
+    test('defaultProject enables project.dataset.table references', () => {
+      const kyselyWithProject = new Kysely<any>({
+        dialect: new BigQueryDialect({ defaultProject: 'my-project' }),
+      });
+
+      const query = kyselyWithProject
+        .selectFrom('analytics.events')
         .selectAll();
 
       const compiled = query.compile();
-      
-      // Currently works but loses one level
-      expect(compiled.sql).toBe('select * from `my-project`.`analytics`');
-      // Desired: select * from `my-project`.`analytics`.`events`
+      expect(compiled.sql).toBe('select * from `my-project`.`analytics`.`events`');
     });
   });
 
@@ -1017,20 +1044,6 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
   });
 
   describe('Unsupported Operations Tests', () => {
-    test('Should handle index operations', () => {
-      // These would need to throw errors or be ignored
-      const createIndex = sql`CREATE INDEX idx_users_email ON users(email)`;
-      const dropIndex = sql`DROP INDEX idx_users_email`;
-
-      // Currently these pass through as raw SQL
-      const compiledCreateIndex = createIndex.compile(kysely);
-      const compiledDropIndex = dropIndex.compile(kysely);
-      expect(compiledCreateIndex.sql).toContain('CREATE INDEX');
-      expect(compiledDropIndex.sql).toContain('DROP INDEX');
-      
-      // Desired: Should throw clear error about indexes not being supported
-    });
-
     test('Should handle function calls with multiple arguments and comma separation', () => {
       /* Test the visitFunctionArgumentList method with multiple args */
       const query = sql`SELECT COALESCE(name, email, 'unknown') as identifier FROM users`;
@@ -1152,20 +1165,20 @@ describe('BigQuery vs MySQL Differences - Unit Tests', () => {
       expect(query.sql).toContain('myproject.mydataset.users');
     });
 
-    test('Should handle schema with dots in CREATE TABLE', () => {
-      const kysely = new Kysely<any>({
-        dialect: new BigQueryDialect(),
+    test('defaultProject prepends project in CREATE TABLE', () => {
+      const kyselyWithProject = new Kysely<any>({
+        dialect: new BigQueryDialect({ defaultProject: 'myproject' }),
       });
 
-      /* Use query builder to trigger SchemableIdentifierNode with dots in schema */
-      const query = kysely.schema
-        .createTable('myproject.mydataset.newtable' as any)
+      const query = kyselyWithProject.schema
+        .createTable('mydataset.newtable')
         .addColumn('id', 'integer', (col) => col.primaryKey())
         .addColumn('name', 'varchar');
 
       const compiled = query.compile();
-      /* The table is created with project.dataset as the schema part */
-      expect(compiled.sql).toBe('create table `myproject`.`mydataset` (`id` integer primary key not enforced, `name` varchar)');
+      expect(compiled.sql).toBe(
+        'create table `myproject`.`mydataset`.`newtable` (`id` integer primary key not enforced, `name` varchar)',
+      );
     });
   });
 

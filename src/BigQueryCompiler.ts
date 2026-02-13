@@ -1,6 +1,5 @@
 import {
   type ColumnDefinitionNode,
-  type CreateTableNode,
   type DeleteQueryNode,
   type ForeignKeyConstraintNode,
   type FunctionNode,
@@ -13,7 +12,6 @@ import {
   type TableNode,
   type UniqueConstraintNode,
   type UpdateQueryNode,
-  type ValueNode,
 } from 'kysely';
 
 /**
@@ -23,6 +21,13 @@ import {
  * BigQuery-compatible SQL.
  */
 export class BigQueryCompiler extends MysqlQueryCompiler {
+  readonly #defaultProject: string | undefined;
+
+  constructor(defaultProject?: string) {
+    super();
+    this.#defaultProject = defaultProject;
+  }
+
   protected override visitSetOperation(node: SetOperationNode): void {
     if (node.operator === 'union' && !node.all) {
       this.append('union distinct ');
@@ -36,12 +41,10 @@ export class BigQueryCompiler extends MysqlQueryCompiler {
     const funcName = node.func.toUpperCase();
 
     switch (funcName) {
-      /* c8 ignore start - NOW function translation */
       case 'NOW':
         this.append('CURRENT_TIMESTAMP');
         this.visitFunctionArgumentList(node.arguments);
         return;
-      /* c8 ignore stop */
 
       case 'LENGTH':
         /* BigQuery uses CHAR_LENGTH for character count */
@@ -49,7 +52,6 @@ export class BigQueryCompiler extends MysqlQueryCompiler {
         this.visitFunctionArgumentList(node.arguments);
         return;
 
-      /* c8 ignore start - DATE_FORMAT function translation */
       case 'DATE_FORMAT':
         if (
           node.arguments.length === 2 &&
@@ -60,23 +62,20 @@ export class BigQueryCompiler extends MysqlQueryCompiler {
         ) {
           this.append('FORMAT_TIMESTAMP');
           this.append('(');
-          this.visitNode(node.arguments[1]); // format first
+          this.visitNode(node.arguments[1]);
           this.append(', ');
-          this.visitNode(node.arguments[0]); // then date
+          this.visitNode(node.arguments[0]);
           this.append(')');
           return;
         }
         break;
-      /* c8 ignore stop */
 
-      /* c8 ignore start - DATE_ADD passthrough */
       case 'DATE_ADD':
         /*
          * Pass through DATE_ADD as BigQuery supports it
          * Note: BigQuery syntax is DATE_ADD(date, INTERVAL n unit)
          */
         break;
-      /* c8 ignore stop */
 
       default:
         /* Use default handler for all other functions */
@@ -112,55 +111,24 @@ export class BigQueryCompiler extends MysqlQueryCompiler {
     super.visitDeleteQuery(node);
   }
 
-  protected override visitCreateTable(node: CreateTableNode): void {
-    super.visitCreateTable(node);
-  }
-
   protected override visitTable(node: TableNode): void {
-    const { table } = node;
-
-    if (table.kind === 'SchemableIdentifierNode') {
-      const schemableNode = table;
+    if (this.#defaultProject && node.table.kind === 'SchemableIdentifierNode') {
+      const schemableNode = node.table;
 
       if (schemableNode.schema && schemableNode.schema.kind === 'IdentifierNode') {
-        const schemaName = schemableNode.schema.name;
-
-        /* c8 ignore start - project.dataset.table parsing for BigQuery */
-        if (schemaName.includes('.')) {
-          const parts = schemaName.split('.');
-          if (parts.length === 2) {
-            const [project, dataset] = parts;
-            this.visitIdentifier({ kind: 'IdentifierNode', name: project } as IdentifierNode);
-            this.append('.');
-            this.visitIdentifier({ kind: 'IdentifierNode', name: dataset } as IdentifierNode);
-            this.append('.');
-            this.visitIdentifier(schemableNode.identifier);
-            return;
-          }
-          /* If not exactly 2 parts, fall through to default behavior */
-        }
-        /* c8 ignore stop */
-      }
-    }
-
-    super.visitTable(node);
-  }
-
-  protected override visitValue(node: ValueNode): void {
-    if (node.value === null || node.value === undefined) {
-      super.visitValue(node);
-      return;
-    }
-
-    if (typeof node.value === 'string' && /^\d+$/.test(node.value)) {
-      const num = BigInt(node.value);
-      if (num > Number.MAX_SAFE_INTEGER || num < Number.MIN_SAFE_INTEGER) {
-        super.visitValue(node);
+        this.visitIdentifier({
+          kind: 'IdentifierNode',
+          name: this.#defaultProject,
+        } as IdentifierNode);
+        this.append('.');
+        this.visitIdentifier(schemableNode.schema);
+        this.append('.');
+        this.visitIdentifier(schemableNode.identifier);
         return;
       }
     }
 
-    super.visitValue(node);
+    super.visitTable(node);
   }
 
   protected override visitRaw(node: RawNode): void {
@@ -180,7 +148,7 @@ export class BigQueryCompiler extends MysqlQueryCompiler {
     if (translatedFragments.some((f) => f.match(/\bDATE_FORMAT\s*\(/i))) {
       for (let i = 0; i < translatedFragments.length; i++) {
         let fragment = translatedFragments[i];
-        /* c8 ignore start */
+        /* c8 ignore start - defensive: fragments already filtered above */
         if (fragment === null || fragment === undefined || fragment === '') {
           continue;
         }
@@ -213,30 +181,26 @@ export class BigQueryCompiler extends MysqlQueryCompiler {
         }
       }
 
-      for (let i = 0; i < translatedFragments.length; i++) {
-        if (i > 0) {
-          const param = node.parameters[i - 1];
-          if (param) {
-            this.visitNode(param);
-          }
-        }
-        const fragment = translatedFragments[i];
-        if (fragment) {
-          this.append(fragment);
+      this.appendFragmentsWithParams(translatedFragments, node.parameters);
+    } else {
+      this.appendFragmentsWithParams(translatedFragments, node.parameters);
+    }
+  }
+
+  private appendFragmentsWithParams(
+    fragments: string[],
+    params: ReadonlyArray<OperationNode>,
+  ): void {
+    for (let i = 0; i < fragments.length; i++) {
+      if (i > 0) {
+        const param = params[i - 1];
+        if (param) {
+          this.visitNode(param);
         }
       }
-    } else {
-      for (let i = 0; i < translatedFragments.length; i++) {
-        if (i > 0) {
-          const param = node.parameters[i - 1];
-          if (param) {
-            this.visitNode(param);
-          }
-        }
-        const fragment = translatedFragments[i];
-        if (fragment) {
-          this.append(fragment);
-        }
+      const fragment = fragments[i];
+      if (fragment) {
+        this.append(fragment);
       }
     }
   }
@@ -248,7 +212,7 @@ export class BigQueryCompiler extends MysqlQueryCompiler {
     for (const node of args) {
       this.visitNode(node);
 
-      /* c8 ignore start */
+      /* c8 ignore start - defensive: currently only called with 0-1 args */
       if (node !== lastNode) {
         this.append(', ');
       }

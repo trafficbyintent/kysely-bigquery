@@ -11,7 +11,7 @@ failed=0
 # Check workflow files exist
 echo ""
 echo "📁 Checking workflow files..."
-for workflow in ci.yml release.yml manual-release.yml; do
+for workflow in ci.yml release-simplified.yml manual-release.yml; do
     if [ -f ".github/workflows/$workflow" ]; then
         echo "   ✅ $workflow exists"
     else
@@ -59,8 +59,8 @@ echo ""
 echo "📅 Checking workflow triggers..."
 echo "   CI workflow triggers on:"
 grep -A5 "^on:" .github/workflows/ci.yml | grep -E "push:|pull_request:" | sed 's/^/      /'
-echo "   Release workflow triggers on:"
-grep -A5 "^on:" .github/workflows/release.yml | grep -E "push:|release:|workflow_dispatch:" | sed 's/^/      /'
+echo "   Release (Simplified) workflow triggers on:"
+grep -A5 "^on:" .github/workflows/release-simplified.yml | grep -E "workflow_dispatch:" | sed 's/^/      /'
 echo "   Manual Release workflow triggers on:"
 grep -A5 "^on:" .github/workflows/manual-release.yml | grep -E "workflow_dispatch:" | sed 's/^/      /'
 

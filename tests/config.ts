@@ -1,7 +1,7 @@
 import { BigQuery } from '@google-cloud/bigquery';
 import { config } from 'dotenv';
 
-// Load configuration from .secrets file
+/* Load configuration from .secrets file */
 config({ path: '.secrets' });
 
 /**

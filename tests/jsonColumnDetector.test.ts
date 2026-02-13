@@ -27,48 +27,6 @@ describe('JsonColumnDetector', () => {
     });
   });
 
-  describe('isLikelyJsonColumn', () => {
-    test('detects common JSON column names', () => {
-      expect(detector.isLikelyJsonColumn('metadata')).toBe(true);
-      expect(detector.isLikelyJsonColumn('settings')).toBe(true);
-      expect(detector.isLikelyJsonColumn('config')).toBe(true);
-      expect(detector.isLikelyJsonColumn('configuration')).toBe(true);
-      expect(detector.isLikelyJsonColumn('preferences')).toBe(true);
-      expect(detector.isLikelyJsonColumn('options')).toBe(true);
-      expect(detector.isLikelyJsonColumn('data')).toBe(true);
-      expect(detector.isLikelyJsonColumn('json')).toBe(true);
-      expect(detector.isLikelyJsonColumn('payload')).toBe(true);
-      expect(detector.isLikelyJsonColumn('body')).toBe(true);
-      expect(detector.isLikelyJsonColumn('content')).toBe(true);
-      expect(detector.isLikelyJsonColumn('attributes')).toBe(true);
-      expect(detector.isLikelyJsonColumn('properties')).toBe(true);
-      expect(detector.isLikelyJsonColumn('params')).toBe(true);
-      expect(detector.isLikelyJsonColumn('extra')).toBe(true);
-      expect(detector.isLikelyJsonColumn('custom')).toBe(true);
-    });
-
-    test('detects JSON columns case-insensitively', () => {
-      expect(detector.isLikelyJsonColumn('METADATA')).toBe(true);
-      expect(detector.isLikelyJsonColumn('MetaData')).toBe(true);
-      expect(detector.isLikelyJsonColumn('SETTINGS')).toBe(true);
-    });
-
-    test('detects JSON columns with prefixes and suffixes', () => {
-      expect(detector.isLikelyJsonColumn('user_metadata')).toBe(true);
-      expect(detector.isLikelyJsonColumn('metadata_field')).toBe(true);
-      expect(detector.isLikelyJsonColumn('product_json')).toBe(true);
-      expect(detector.isLikelyJsonColumn('json_data')).toBe(true);
-    });
-
-    test('returns false for non-JSON column names', () => {
-      expect(detector.isLikelyJsonColumn('id')).toBe(false);
-      expect(detector.isLikelyJsonColumn('name')).toBe(false);
-      expect(detector.isLikelyJsonColumn('email')).toBe(false);
-      expect(detector.isLikelyJsonColumn('created_at')).toBe(false);
-      expect(detector.isLikelyJsonColumn('price')).toBe(false);
-    });
-  });
-
   describe('extractTableAndColumns', () => {
     test('extracts table name from insert query with SchemableIdentifierNode', () => {
       const compiledQuery: CompiledQuery = {
@@ -405,9 +363,9 @@ describe('JsonColumnDetector', () => {
       expect(result).toEqual([1, 2, 3]);
     });
 
-    test('handles mismatched column and parameter counts', () => {
+    test('serializes JSON columns in multi-row INSERT', () => {
       const compiledQuery: CompiledQuery = {
-        sql: 'INSERT INTO dataset.users (metadata) VALUES (?)',
+        sql: 'INSERT INTO dataset.users (id, metadata) VALUES (?, ?), (?, ?)',
         parameters: [],
         query: {
           kind: 'InsertQueryNode',
@@ -419,62 +377,89 @@ describe('JsonColumnDetector', () => {
             },
           },
           columns: [
+            { column: { name: 'id' } },
             { column: { name: 'metadata' } },
           ],
         },
       };
 
-      /* More params than columns */
-      const params = [{ data: 'test' }, 'extra param'];
+      const meta1 = { role: 'admin' };
+      const meta2 = { role: 'user' };
+      const params = [1, meta1, 2, meta2];
       const result = detector.processParameters(compiledQuery, params);
-      
-      /* Should not process when counts don't match */
-      expect(result).toEqual([{ data: 'test' }, 'extra param']);
+
+      /* Should stringify metadata in both rows */
+      expect(result[0]).toBe(1);
+      expect(result[1]).toBe(JSON.stringify(meta1));
+      expect(result[2]).toBe(2);
+      expect(result[3]).toBe(JSON.stringify(meta2));
+    });
+
+    test('skips serialization when params length is not a multiple of columns', () => {
+      const compiledQuery: CompiledQuery = {
+        sql: 'INSERT INTO dataset.users (id, metadata) VALUES (?, ?)',
+        parameters: [],
+        query: {
+          kind: 'InsertQueryNode',
+          into: {
+            table: {
+              kind: 'SchemableIdentifierNode',
+              schema: { name: 'dataset' },
+              identifier: { name: 'users' },
+            },
+          },
+          columns: [
+            { column: { name: 'id' } },
+            { column: { name: 'metadata' } },
+          ],
+        },
+      };
+
+      /* 3 params for 2 columns — not a valid multiple, skip processing */
+      const params = [1, { data: 'test' }, 'orphan'];
+      const result = detector.processParameters(compiledQuery, params);
+
+      expect(result).toEqual([1, { data: 'test' }, 'orphan']);
     });
   });
 
   describe('edge cases for extractTableName', () => {
-    test('handles undefined tableNode', () => {
-      /* Test via a query that would result in undefined tableNode */
+    test('handles undefined into.table in InsertQueryNode', () => {
       const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM unknown_table',
+        sql: 'INSERT INTO unknown (col) VALUES (?)',
         parameters: [],
         query: {
-          kind: 'SelectQueryNode',
-          from: {
-            table: undefined, /* This should trigger the undefined handling */
+          kind: 'InsertQueryNode',
+          into: {
+            table: undefined,
           },
         },
       };
 
       const info = detector.extractTableAndColumns(compiledQuery);
-      /* Should handle undefined gracefully and return undefined tableName */
       expect(info.tableName).toBeUndefined();
     });
 
-    test('handles unrecognized table node types', () => {
-      /* Test a table node with an unrecognized kind */
+    test('handles unrecognized table node type in InsertQueryNode', () => {
       const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM weird_table',
+        sql: 'INSERT INTO weird (col) VALUES (?)',
         parameters: [],
         query: {
-          kind: 'SelectQueryNode',
-          from: {
+          kind: 'InsertQueryNode',
+          into: {
             table: {
-              kind: 'UnknownTableNodeType', /* This should trigger the default case */
-              name: 'weird_table'
-            },
+              kind: 'UnknownTableNodeType',
+              name: 'weird_table',
+            } as any,
           },
         },
       };
 
       const info = detector.extractTableAndColumns(compiledQuery);
-      /* Should return undefined for unrecognized node types */
       expect(info.tableName).toBeUndefined();
     });
 
-    test('handles null dataset id in table name parsing', () => {
-      /* This tests handling when parts of the table reference are null/undefined */
+    test('handles null schema name in InsertQueryNode', () => {
       const compiledQuery: CompiledQuery = {
         sql: 'INSERT INTO dataset.users (metadata) VALUES (?)',
         parameters: [],
@@ -483,82 +468,52 @@ describe('JsonColumnDetector', () => {
           into: {
             table: {
               kind: 'SchemableIdentifierNode',
-              schema: { name: null }, /* null schema name */
+              schema: { name: null },
               identifier: { name: 'users' },
             },
           },
-          columns: [
-            { column: { name: 'metadata' } },
-          ],
+          columns: [{ column: { name: 'metadata' } }],
         },
       };
 
       const params = [{ role: 'admin' }];
       /* Should not crash when schema name is null */
       const result = detector.processParameters(compiledQuery, params);
-      expect(result).toEqual([{ role: 'admin' }]); /* Should not process due to unclear table name */
+      expect(result).toEqual([{ role: 'admin' }]);
     });
 
-    test('directly tests extractTableName with undefined tableNode (edge case)', () => {
-      /* Create a more direct test for the undefined case - lines 116-117 */
+    test('handles undefined table.table in UpdateQueryNode', () => {
       const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM somewhere',
+        sql: 'UPDATE unknown SET col = ?',
         parameters: [],
         query: {
-          kind: 'SelectQueryNode',
-          from: {
-            froms: [
-              {
-                table: undefined, /* This will hit the undefined check */
-              }
-            ]
+          kind: 'UpdateQueryNode',
+          table: {
+            table: undefined,
           },
         },
       };
 
-      /* This should trigger the undefined tableNode path without crashing */
       const info = detector.extractTableAndColumns(compiledQuery);
       expect(info.tableName).toBeUndefined();
     });
 
-    test('directly tests extractTableName with completely unrecognized node (edge case)', () => {
-      /* Test the final return undefined case - line 131 */
+    test('handles unrecognized node type in UpdateQueryNode', () => {
       const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM weird_construct',
+        sql: 'UPDATE weird SET col = ?',
         parameters: [],
         query: {
-          kind: 'SelectQueryNode',
-          from: {
+          kind: 'UpdateQueryNode',
+          table: {
             table: {
-              kind: 'CompletelyUnknownNodeType', /* This should hit line 131 */
-              someProperty: 'value'
+              kind: 'CompletelyUnknownNodeType',
+              someProperty: 'value',
             } as any,
           },
+          updates: [{ column: { column: { name: 'col' } } }],
         },
       };
 
-      /* Should return undefined for completely unknown node types */
-      const info = detector.extractTableAndColumns(compiledQuery);
-      expect(info.tableName).toBeUndefined();
-    });
-
-    test('tests IdentifierNode with missing name property (defensive edge case)', () => {
-      /* Test defensive programming for malformed IdentifierNode */
-      const compiledQuery: CompiledQuery = {
-        sql: 'SELECT * FROM malformed',
-        parameters: [],
-        query: {
-          kind: 'SelectQueryNode',
-          from: {
-            table: {
-              kind: 'IdentifierNode',
-              /* Missing name property - should handle gracefully */
-            } as any,
-          },
-        },
-      };
-
-      /* Should not crash even with malformed nodes */
       const info = detector.extractTableAndColumns(compiledQuery);
       expect(info.tableName).toBeUndefined();
     });

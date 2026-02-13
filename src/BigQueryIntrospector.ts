@@ -28,7 +28,24 @@ export class BigQueryIntrospector implements DatabaseIntrospector {
   constructor(db: Kysely<unknown>, config: BigQueryDialectConfig) {
     this.#db = db;
     this.#config = config;
-    this.#client = new BigQuery(this.#config.options);
+    this.#client = this.#resolveBigQueryClient();
+  }
+
+  /**
+   * Resolves the BigQuery client from the dialect config.
+   *
+   * Uses the provided bigquery instance if it has getDatasets (i.e., is a BigQuery instance).
+   * Falls back to creating a new BigQuery client from options.
+   */
+  #resolveBigQueryClient(): BigQuery {
+    if (
+      this.#config.bigquery &&
+      'getDatasets' in this.#config.bigquery &&
+      typeof this.#config.bigquery.getDatasets === 'function'
+    ) {
+      return this.#config.bigquery;
+    }
+    return new BigQuery(this.#config.options);
   }
 
   async getSchemas(): Promise<SchemaMetadata[]> {

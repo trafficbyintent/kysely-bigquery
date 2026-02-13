@@ -1,17 +1,11 @@
 import { MysqlAdapter } from 'kysely';
 
 /**
- * BigQuery adapter that extends MysqlAdapter to handle BigQuery-specific features.
+ * BigQuery adapter that extends MysqlAdapter.
  *
- * Main differences:
- * - Appends NOT ENFORCED to all constraint definitions (PRIMARY KEY, FOREIGN KEY, UNIQUE)
- * - Handles BigQuery's unenforced constraint model
+ * Disables the RETURNING clause, which BigQuery does not support.
  */
 export class BigQueryAdapter extends MysqlAdapter {
-  /**
-   * Override to ensure all constraints have NOT ENFORCED appended.
-   * BigQuery supports constraint syntax but doesn't enforce them at runtime.
-   */
   public get supportsReturning(): boolean {
     return false;
   }

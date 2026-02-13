@@ -101,12 +101,9 @@ main() {
         echo ""
         echo "=== Release Workflow Tests ==="
         echo "Note: Release workflows run in dry-run mode during local testing"
-        
-        # Test release workflow (automatic dry-run for npm publish)
-        run_workflow_test "release.yml" "tag.json" "Release on tag push" || failed=1
-        
-        # Test manual release trigger (automatic dry-run)
-        run_workflow_test "release.yml" "workflow_dispatch.json" "Manual release trigger" || failed=1
+
+        # Test simplified release workflow (automatic dry-run for npm publish)
+        run_workflow_test "release-simplified.yml" "workflow_dispatch.json" "Release (Simplified) manual trigger" || failed=1
     fi
     
     if [ "$workflow_filter" == "all" ] || [ "$workflow_filter" == "manual-release" ]; then

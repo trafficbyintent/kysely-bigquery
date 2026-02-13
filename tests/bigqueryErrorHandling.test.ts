@@ -3,7 +3,7 @@ import { describe, expect, test, vi, beforeEach } from 'vitest';
 
 import { BigQueryConnection, BigQueryDriver } from '../src';
 
-// Mock BigQuery client
+/* Mock BigQuery client */
 const mockQuery = vi.fn();
 const mockCreateQueryStream = vi.fn();
 

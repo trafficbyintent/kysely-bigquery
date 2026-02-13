@@ -4,27 +4,14 @@
 
 ## Installation
 
-This is a private package hosted on GitHub Packages. To install:
-
-1. Create a `.npmrc` file in your project root with:
-```
-@trafficbyintent:registry=https://npm.pkg.github.com
-```
-
-2. Authenticate with GitHub Packages (one-time setup):
 ```bash
-npm login --registry=https://npm.pkg.github.com --scope=@trafficbyintent
-# Username: YOUR_GITHUB_USERNAME
-# Password: YOUR_GITHUB_PERSONAL_ACCESS_TOKEN (with read:packages scope)
-# Email: YOUR_EMAIL
+npm install @google-cloud/bigquery @trafficbyintent/kysely-bigquery
 ```
 
-3. Install the package:
+Or with yarn:
 ```bash
-npm i @google-cloud/bigquery @trafficbyintent/kysely-bigquery
+yarn add @google-cloud/bigquery @trafficbyintent/kysely-bigquery
 ```
-
-For CI/CD environments, set the `NODE_AUTH_TOKEN` environment variable to a GitHub token with `read:packages` permission.
 
 This project was largely adapted from [kysely-planetscale](https://github.com/depot/kysely-planetscale) and forked from [@maktouch/kysely-bigquery](https://github.com/maktouch/kysely-bigquery).
 
@@ -52,16 +39,18 @@ interface Database {
   'some_dataset.some_table': SomeTable
 }
 
-// Let BigQueryDialect create the BiqQuery instance:
+// Let BigQueryDialect create the BigQuery instance:
 const options: BigQueryOptions = ...;
-const db = new Kysely<Database>({ 
-  dialect: new BigQueryDialect({ 
+const db = new Kysely<Database>({
+  dialect: new BigQueryDialect({
     options,
-    // Optional: Configure JSON columns for automatic serialization
+    // Optional: prepend project ID to all table references
+    defaultProject: 'my-gcp-project',
+    // Optional: configure JSON columns for automatic serialization
     jsonColumns: {
       'some_dataset.some_table': ['metadata', 'settings']
     }
-  }) 
+  })
 });
 
 // Or pass in an existing instance
@@ -76,7 +65,7 @@ For test environment setup, see [tests/README.md](tests/README.md).
 ### Key Features
 
 - **Automatic null parameter handling** - The dialect automatically provides type hints for null parameters
-- **JSON serialization/deserialization** - Objects are automatically converted to/from JSON strings
+- **JSON serialization/deserialization** - Registered JSON columns are automatically stringified on write and parsed on read
 - **BigQuery SQL compatibility** - Automatic translation of MySQL-style queries to BigQuery syntax
 - **Constraint support** - Handles BigQuery's unenforced constraints with proper `NOT ENFORCED` syntax
 
@@ -154,7 +143,7 @@ const db = new Kysely<Database>({
   })
 });
 
-// Objects are automatically stringified for registered columns
+// Objects are automatically stringified for registered columns on write
 await db
   .insertInto('dataset.users')
   .values({
@@ -165,7 +154,7 @@ await db
   })
   .execute();
 
-// JSON is automatically parsed back to objects when selecting
+// Registered columns are automatically parsed back to objects on read
 const user = await db
   .selectFrom('dataset.users')
   .selectAll()
@@ -215,6 +204,30 @@ const results = await sql`
 `.execute(db);
 ```
 
+## Project-Qualified Table Names
+
+BigQuery supports three-level table names: `project.dataset.table`. Since Kysely's parser only handles two-level names (`schema.table`), use the `defaultProject` config to automatically prepend your project ID:
+
+```typescript
+const db = new Kysely<Database>({
+  dialect: new BigQueryDialect({
+    bigquery: client,
+    defaultProject: 'my-gcp-project',
+  })
+});
+
+// Write queries with dataset.table — project is prepended automatically
+db.selectFrom('analytics.events').selectAll();
+// Generates: select * from `my-gcp-project`.`analytics`.`events`
+```
+
+Without `defaultProject`, two-level names work as expected:
+
+```typescript
+db.selectFrom('analytics.events').selectAll();
+// Generates: select * from `analytics`.`events`
+```
+
 ## BigQuery SQL Compatibility
 
 The `BigQueryCompiler` extends Kysely's MySQL query compiler to handle BigQuery-specific SQL syntax differences. It automatically translates common MySQL patterns to their BigQuery equivalents, allowing you to write more portable code.
@@ -238,8 +251,8 @@ The `BigQueryCompiler` extends Kysely's MySQL query compiler to handle BigQuery-
 
 #### Table Naming
 
-- Supports BigQuery's `project.dataset.table` naming convention
-- Automatically handles dot-separated schema names
+- Supports BigQuery's two-level `dataset.table` naming by default
+- Use `defaultProject` config to enable three-level `project.dataset.table` references (project is prepended automatically)
 
 ### Example Translations
 

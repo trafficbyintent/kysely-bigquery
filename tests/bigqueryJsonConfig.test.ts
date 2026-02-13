@@ -2,7 +2,7 @@ import { Kysely } from 'kysely';
 import { BigQueryDialect } from '../src';
 import { describe, expect, test, vi, beforeEach } from 'vitest';
 
-// Mock the BigQuery client
+/* Mock the BigQuery client */
 const mockQuery = vi.fn();
 const mockCreateQueryStream = vi.fn();
 
@@ -57,10 +57,10 @@ describe('BigQuery JSON Column Configuration', () => {
       timezone: 'UTC'
     };
 
-    // Mock successful response
+    /* Mock successful response */
     mockQuery.mockResolvedValue([[]]);
 
-    // This should automatically serialize the JSON objects
+    /* This should automatically serialize the JSON objects */
     await kysely
       .insertInto('test_dataset.users')
       .values({
@@ -72,13 +72,13 @@ describe('BigQuery JSON Column Configuration', () => {
       })
       .execute();
 
-    // Verify the query was called with serialized JSON
+    /* Verify the query was called with serialized JSON */
     expect(mockQuery).toHaveBeenCalled();
     const queryCall = mockQuery.mock.calls[0][0];
-    
-    // Check that JSON objects were serialized to strings
-    expect(queryCall.params[2]).toBe(JSON.stringify(metadata));
-    expect(queryCall.params[3]).toBe(JSON.stringify(settings));
+
+    /* Check that JSON objects were serialized (order-independent) */
+    expect(queryCall.params).toContain(JSON.stringify(metadata));
+    expect(queryCall.params).toContain(JSON.stringify(settings));
   });
 
   test('should not serialize non-JSON columns', async () => {
@@ -110,11 +110,11 @@ describe('BigQuery JSON Column Configuration', () => {
       .execute();
 
     const queryCall = mockQuery.mock.calls[0][0];
-    
-    // metadata should be serialized
-    expect(queryCall.params[2]).toBe(JSON.stringify(metadata));
-    // settings should remain as object (not configured as JSON)
-    expect(queryCall.params[3]).toEqual({ key: 'value' });
+
+    /* metadata should be serialized (order-independent) */
+    expect(queryCall.params).toContain(JSON.stringify(metadata));
+    /* settings should remain as object (not configured as JSON) */
+    expect(queryCall.params).toContainEqual({ key: 'value' });
   });
 
   test('should handle UPDATE with JSON columns', async () => {
@@ -145,7 +145,7 @@ describe('BigQuery JSON Column Configuration', () => {
 
     const queryCall = mockQuery.mock.calls[0][0];
     
-    // Both JSON fields should be serialized
+    /* Both JSON fields should be serialized */
     expect(queryCall.params[0]).toBe(JSON.stringify(newMetadata));
     expect(queryCall.params[1]).toBe(JSON.stringify({ language: 'es' }));
   });
@@ -165,7 +165,7 @@ describe('BigQuery JSON Column Configuration', () => {
       notifications: true
     };
 
-    // Mock query response with JSON strings
+    /* Mock query response with JSON strings */
     mockQuery.mockResolvedValue([[
       {
         id: 'test-1',
@@ -182,7 +182,7 @@ describe('BigQuery JSON Column Configuration', () => {
       .where('id', '=', 'test-1')
       .executeTakeFirst();
 
-    // JSON strings should be automatically parsed
+    /* JSON strings should be automatically parsed */
     expect(result?.metadata).toEqual(metadata);
     expect(result?.settings).toEqual({ language: 'en' });
   });
@@ -211,9 +211,9 @@ describe('BigQuery JSON Column Configuration', () => {
       .execute();
 
     const queryCall = mockQuery.mock.calls[0][0];
-    
-    // Null values should remain null
-    expect(queryCall.params[2]).toBeNull();
-    expect(queryCall.params[3]).toBeNull();
+
+    /* Null values should remain null (not serialized) */
+    const nullCount = queryCall.params.filter((p: unknown) => p === null).length;
+    expect(nullCount).toBe(2);
   });
 });

@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-02-08
+
+### Breaking Changes
+- **JSON auto-parsing removed**: Result strings are no longer speculatively `JSON.parse()`d. Only columns registered in `jsonColumns` config are parsed. If you relied on automatic parsing of unregistered columns, you must now register them or parse manually.
+- **`isLikelyJsonColumn` removed**: The `JsonColumnDetector.isLikelyJsonColumn()` method has been removed. Use explicit column registration via `jsonColumns` config instead.
+
+### Added
+- **`defaultProject` config**: New dialect option to prepend a GCP project ID to all table references, enabling three-level `project.dataset.table` names within Kysely's two-level parser.
+- Tests for `visitFunction` translations (NOW, DATE_FORMAT, LENGTH) through Kysely's query builder path.
+- Test for introspector using provided `bigquery` instance instead of creating a new one.
+
+### Fixed
+- **Introspector auth bug**: `BigQueryIntrospector` now uses the configured `bigquery` instance instead of always creating a new unauthenticated client.
+- **`#inferParamTypes` ordering**: Parameter types are now inferred from post-serialization values, matching what BigQuery actually receives.
+- Import casing in test file (`bigQueryConnection` → `BigQueryConnection`) preventing builds on case-sensitive filesystems.
+
+### Removed
+- Dead code: `visitCreateTable` no-op override, `visitValue` BigInt no-op, unreachable `schemaName.includes('.')` branch, `isLikelyJsonColumn` method.
+- Duplicated null parameter type inference (extracted to shared `#inferParamTypes` method).
+- Duplicated fragment processing in `visitRaw` (extracted to `#appendFragmentsWithParams`).
+- Performative tests that did not exercise source code.
+- `c8 ignore` blocks from core compiler logic (now covered by query builder tests).
+
+## [1.5.0] - 2025-08-24
+
+### Added
+- Simplified release workflow (`release-simplified.yml`) following TXI style-guide best practices
+- Version bump reference workflow for documentation purposes
+- Comprehensive release documentation in `.github/README.md`
+
+### Changed
+- Migrated `@trafficbyintent/style-guide` from GitHub Packages to private npm registry
+- Updated style-guide dependency to v1.2.1
+- Improved CI workflow to remove unnecessary GitHub Package authentication
+- Enhanced release process documentation with step-by-step instructions
+
+### Fixed
+- CI authentication issues with private npm packages
+- Workflow validation and syntax issues
+
 ## [1.4.4] - 2025-08-11
 
 ### Fixed
@@ -90,7 +130,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Forked from @maktouch/kysely-bigquery
 - Restructured for TXI coding standards
 
-[Unreleased]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.3...HEAD
+[Unreleased]: https://github.com/trafficbyintent/kysely-bigquery/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.5.0...v2.0.0
+[1.5.0]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.3...v1.5.0
 [1.4.3]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/trafficbyintent/kysely-bigquery/compare/v1.4.0...v1.4.1

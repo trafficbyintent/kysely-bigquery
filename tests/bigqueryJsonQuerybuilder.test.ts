@@ -1,6 +1,6 @@
 import { CompiledQuery } from 'kysely';
 import { describe, expect, test, vi } from 'vitest';
-import { BigQueryConnection } from '../src/bigQueryConnection';
+import { BigQueryConnection } from '../src/BigQueryConnection';
 import { BigQueryDialectConfig } from '../src';
 
 describe('BigQuery JSON Query Builder Handling', () => {
@@ -50,10 +50,11 @@ describe('BigQuery JSON Query Builder Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // Should stringify the JSON object for the metadata column
+    /* Should stringify the JSON object for the metadata column */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (id, name, metadata) VALUES (?, ?, ?)',
       params: [1, 'John', JSON.stringify(jsonData)],
+      parseJSON: true,
     });
   });
 
@@ -91,10 +92,11 @@ describe('BigQuery JSON Query Builder Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // Should stringify the JSON object for the settings column
+    /* Should stringify the JSON object for the settings column */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'UPDATE users SET settings = ? WHERE id = ?',
       params: [JSON.stringify(newSettings), 1],
+      parseJSON: true,
     });
   });
 
@@ -128,10 +130,11 @@ describe('BigQuery JSON Query Builder Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // Should only stringify the metadata column (JSON), not tags (ARRAY)
+    /* Should only stringify the metadata column (JSON), not tags (ARRAY) */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (id, name, tags, metadata) VALUES (?, ?, ?, ?)',
       params: [1, 'John', tags, JSON.stringify(metadata)],
+      parseJSON: true,
     });
   });
 
@@ -163,10 +166,11 @@ describe('BigQuery JSON Query Builder Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // Should NOT stringify arrays - BigQuery handles them natively
+    /* Should NOT stringify arrays - BigQuery handles them natively */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO products (id, name, tags) VALUES (?, ?, ?)',
       params: [1, 'Product', tags],
+      parseJSON: true,
     });
   });
 
@@ -196,11 +200,49 @@ describe('BigQuery JSON Query Builder Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // Should handle null values with proper types
+    /* Should handle null values with proper types */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'INSERT INTO users (id, name, metadata) VALUES (?, ?, ?)',
       params: [1, 'John', null],
-      types: ['INT64', 'STRING', 'STRING']
+      types: ['INT64', 'STRING', 'STRING'],
+      parseJSON: true,
+    });
+  });
+
+  test('should stringify JSON fields in multi-row INSERT', async () => {
+    mockQuery.mockResolvedValue([[]]);
+
+    const meta1 = { role: 'admin' };
+    const meta2 = { role: 'user' };
+
+    const compiledQuery: CompiledQuery = {
+      sql: 'INSERT INTO users (id, name, metadata) VALUES (?, ?, ?), (?, ?, ?)',
+      parameters: [1, 'Alice', meta1, 2, 'Bob', meta2],
+      query: {
+        kind: 'InsertQueryNode',
+        into: {
+          kind: 'TableNode',
+          table: {
+            kind: 'SchemableIdentifierNode',
+            schema: { kind: 'IdentifierNode', name: 'test_dataset' },
+            identifier: { kind: 'IdentifierNode', name: 'users' }
+          }
+        },
+        columns: [
+          { kind: 'ColumnNode', column: { kind: 'IdentifierNode', name: 'id' } },
+          { kind: 'ColumnNode', column: { kind: 'IdentifierNode', name: 'name' } },
+          { kind: 'ColumnNode', column: { kind: 'IdentifierNode', name: 'metadata' } }
+        ]
+      } as any
+    };
+
+    await connection.executeQuery(compiledQuery);
+
+    /* Should stringify metadata in both rows */
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: 'INSERT INTO users (id, name, metadata) VALUES (?, ?, ?), (?, ?, ?)',
+      params: [1, 'Alice', JSON.stringify(meta1), 2, 'Bob', JSON.stringify(meta2)],
+      parseJSON: true,
     });
   });
 
@@ -244,10 +286,11 @@ describe('BigQuery JSON Query Builder Handling', () => {
 
     await connection.executeQuery(compiledQuery);
 
-    // Should stringify both JSON objects
+    /* Should stringify both JSON objects */
     expect(mockQuery).toHaveBeenCalledWith({
       query: 'UPDATE users SET settings = ?, preferences = ? WHERE id = ?',
       params: [JSON.stringify(settings), JSON.stringify(preferences), 1],
+      parseJSON: true,
     });
   });
 });

@@ -45,6 +45,26 @@ export interface BigQueryDialectConfig {
    * ```
    */
   jsonColumns?: Record<string, string[]>;
+
+  /**
+   * Default GCP project ID to prepend to table references.
+   *
+   * BigQuery supports three-level table names: `project.dataset.table`.
+   * Kysely's parser only handles two-level names (`schema.table`), so
+   * three-part strings like `'my-project.dataset.table'` lose the table name.
+   *
+   * Set this to your project ID so you can write `selectFrom('dataset.table')`
+   * and the compiler emits `\`project\`.\`dataset\`.\`table\``.
+   *
+   * Example:
+   * ```
+   * new BigQueryDialect({
+   *   bigquery: client,
+   *   defaultProject: 'my-gcp-project',
+   * })
+   * ```
+   */
+  defaultProject?: string;
 }
 
 /**
@@ -80,7 +100,7 @@ export class BigQueryDialect implements Dialect {
    * @returns A new BigQueryCompiler instance that translates Kysely queries to BigQuery SQL
    */
   createQueryCompiler(): QueryCompiler {
-    return new BigQueryCompiler();
+    return new BigQueryCompiler(this.#config.defaultProject);
   }
 
   /**
@@ -111,15 +131,6 @@ export class BigQueryDialect implements Dialect {
         );
       }
 
-      /* Validate credentials */
-      if (
-        !config.options.keyFilename &&
-        !config.options.credentials &&
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-        !(process as any).env['GOOGLE_APPLICATION_CREDENTIALS']
-      ) {
-        /* Authentication will fall back to Application Default Credentials */
-      }
     }
 
     /* Validate bigquery instance if provided */

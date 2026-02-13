@@ -1,4 +1,4 @@
-const { getESLintConfig } = require('@trafficbyintent/style-guide/typescript');
+const { getESLintConfig } = require('@trafficbyintent/linters/typescript');
 
 module.exports = {
   ...getESLintConfig({
