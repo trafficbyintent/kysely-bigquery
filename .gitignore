@@ -6,6 +6,7 @@ dist
 .act
 coverage
 *.lcov
+.DS_Store
 
 # Agent work files
 CLAUDE.md

@@ -395,7 +395,8 @@ Without `NOT ENFORCED`, BigQuery will reject the constraint definition.
 
    ```typescript
    await db.transaction().execute(async (trx) => {
-     // Throws error - BigQuery doesn't support transactions
+     // No-op - BigQuery doesn't support transactions.
+     // Operations execute but are not wrapped in a transaction.
    });
    ```
 
@@ -453,14 +454,24 @@ These are BigQuery platform limitations that cannot be addressed by the dialect:
 ### Running Tests Locally
 
 ```bash
-# Run unit tests
+# Run unit tests (no credentials required)
 npm test
 
-# Run all tests including integration tests
-npm run test:all
+# Run unit tests with coverage
+npm run test:coverage
+```
 
-# Run integration tests only
+### Integration Tests (Local Only)
+
+Integration tests hit a real BigQuery instance and are **not** run in CI. They require a `.secrets` file with BigQuery credentials (see `.secrets.example`):
+
+```bash
+# Export credentials then run integration tests
+export $(grep -v '^#' .secrets | xargs)
 npm run test:integration
+
+# Run all tests (unit + integration)
+npm run test:all
 ```
 
 ### Testing GitHub Actions Locally
