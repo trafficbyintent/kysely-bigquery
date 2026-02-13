@@ -130,7 +130,6 @@ export class BigQueryDialect implements Dialect {
           'BigQuery projectId is required. Provide it in options.projectId or set GOOGLE_CLOUD_PROJECT environment variable.',
         );
       }
-
     }
 
     /* Validate bigquery instance if provided */

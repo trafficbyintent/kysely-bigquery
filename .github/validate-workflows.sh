@@ -40,7 +40,7 @@ done
 echo ""
 echo "🔑 Checking for required secrets..."
 required_secrets=("NPM_TOKEN")
-optional_secrets=("BIGQUERY_CREDENTIALS" "BIGQUERY_PROJECT_ID" "BIGQUERY_DATASET")
+optional_secrets=()
 
 for secret in "${required_secrets[@]}"; do
     if grep -q "\${{ secrets.$secret }}" .github/workflows/*.yml 2>/dev/null; then

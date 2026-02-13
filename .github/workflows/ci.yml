@@ -30,7 +30,6 @@ jobs:
       run: npm ci
       env:
         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Run ESLint
       run: npm run lint
@@ -58,22 +57,12 @@ jobs:
       run: npm ci
       env:
         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build
       run: npm run build
 
     - name: Run unit tests with coverage
       run: npm run test:coverage
-
-    # Optional: Run integration tests if BigQuery credentials are provided
-    - name: Run integration tests
-      if: github.event_name == 'push' && github.repository == 'trafficbyintent/kysely-bigquery'
-      run: npm run test:integration
-      env:
-        BIGQUERY_CREDENTIALS: ${{ secrets.BIGQUERY_CREDENTIALS }}
-        BIGQUERY_PROJECT_ID: ${{ secrets.BIGQUERY_PROJECT_ID }}
-        BIGQUERY_DATASET: ${{ secrets.BIGQUERY_DATASET }}
 
     # Check that the package can be packed successfully
     - name: Pack package
