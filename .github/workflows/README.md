@@ -104,9 +104,9 @@ Integration tests only run on push events to protected branches when these secre
 
 ### npm Authentication
 
-All workflows pass `NPM_TOKEN` and `GITHUB_TOKEN` as environment variables to `npm ci`. The checked-in `.npmrc` uses these variables to authenticate with both the npm registry (for publishing) and GitHub Packages (for the `@trafficbyintent` scope).
+All workflows pass `NPM_TOKEN` as an environment variable to `npm ci`. The checked-in `.npmrc` reads `${NPM_TOKEN}` to authenticate with the npm registry for both installing private `@trafficbyintent` packages and publishing. All packages are on npmjs.org — GitHub Packages is not used.
 
-**Do not overwrite `.npmrc` in CI** — the checked-in file already has the correct registry scoping.
+**Do not overwrite `.npmrc` in CI** — the checked-in file already has the correct configuration. Do not use `NODE_AUTH_TOKEN` — our `.npmrc` reads `NPM_TOKEN`.
 
 ## Local Testing with Act
 

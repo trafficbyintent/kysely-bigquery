@@ -1,1 +1,1 @@
-module.exports = require('@trafficbyintent/style-guide/typescript/prettier');
+module.exports = require('@trafficbyintent/linters/typescript/prettier');

@@ -1,5 +1,5 @@
 {
-  "extends": "./node_modules/@trafficbyintent/style-guide/src/typescript/tsconfig.base.json",
+  "extends": "./node_modules/@trafficbyintent/linters/src/typescript/tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist",
