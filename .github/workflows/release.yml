@@ -1,14 +1,13 @@
-name: Release (Simplified)
+name: Release
 
 on:
-  workflow_dispatch: # Manual trigger only, no inputs needed
+  workflow_dispatch:
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: write
 
     steps:
       - uses: actions/checkout@v4
@@ -23,10 +22,6 @@ jobs:
         run: npm ci
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build package
-        run: npm run build
 
       - name: Run tests with coverage
         run: npm run test:coverage
@@ -34,7 +29,9 @@ jobs:
       - name: Run lint
         run: npm run lint
 
-      # Get version from package.json
+      - name: Build package
+        run: npm run build
+
       - name: Get package version
         id: package-version
         run: |
@@ -42,24 +39,20 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Publishing version: $VERSION"
 
-      # Publish to npm
       - name: Publish to npm
         run: npm publish --access=public
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # Create GitHub Release
       - name: Create GitHub Release
         if: env.ACT != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.package-version.outputs.version }}
           name: Release v${{ steps.package-version.outputs.version }}
+          generate_release_notes: true
           body: |
             ## @trafficbyintent/kysely-bigquery v${{ steps.package-version.outputs.version }}
-
-            ### What's Changed
-            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
 
             ### Installation
             ```bash
@@ -69,7 +62,6 @@ jobs:
             ---
             Published to npm: https://www.npmjs.com/package/@trafficbyintent/kysely-bigquery
 
-      # Mock GitHub Release (for act testing)
       - name: Mock GitHub Release (act)
         if: env.ACT == 'true'
         run: |
