@@ -171,7 +171,12 @@ export class JsonColumnDetector {
     const processedParams = [...params] as T[];
 
     /* For INSERT queries — handle single-row and multi-row inserts */
-    if (columns && columns.length > 0 && params.length >= columns.length && params.length % columns.length === 0) {
+    if (
+      columns &&
+      columns.length > 0 &&
+      params.length >= columns.length &&
+      params.length % columns.length === 0
+    ) {
       for (let i = 0; i < params.length; i++) {
         const colIndex = i % columns.length;
         const colName = columns[colIndex];

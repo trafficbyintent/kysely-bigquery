@@ -8,6 +8,23 @@ config({ path: '.secrets' });
  * Get BigQuery client options from environment variables.
  */
 export const getBigQueryOptions = () => {
+  /* Local testing: credentials as a JSON blob via BIGQUERY_CREDENTIALS in .secrets */
+  if (process.env.BIGQUERY_CREDENTIALS) {
+    const credentials = JSON.parse(process.env.BIGQUERY_CREDENTIALS) as {
+      client_email: string;
+      private_key: string;
+      project_id: string;
+    };
+    return {
+      projectId: process.env.BIGQUERY_PROJECT_ID ?? credentials.project_id,
+      credentials: {
+        client_email: credentials.client_email,
+        private_key: credentials.private_key,
+      },
+    };
+  }
+
+  /* Local: service account key file */
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     return {
       keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
@@ -15,6 +32,7 @@ export const getBigQueryOptions = () => {
     };
   }
 
+  /* Local: individual credential fields */
   if (process.env.GCP_CLIENT_EMAIL && process.env.GCP_PRIVATE_KEY) {
     return {
       projectId: process.env.GCP_PROJECT_ID,

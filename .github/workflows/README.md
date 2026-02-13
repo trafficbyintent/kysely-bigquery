@@ -84,15 +84,17 @@ To publish packages to npm, you need to create an NPM access token:
    - Value: Paste your npm token
    - Click "Add secret"
 
-#### 2. BigQuery Credentials (Optional, for Integration Tests)
+#### 2. BigQuery Credentials (Local Testing Only)
 
-Integration tests only run on push events to protected branches when these secrets are configured:
+Integration tests are **not** run in CI — they require real BigQuery credentials and are intended for local development testing only. To run them locally, configure your `.secrets` file with:
 
 - `BIGQUERY_CREDENTIALS`: Service account JSON credentials for BigQuery access
 - `BIGQUERY_PROJECT_ID`: Google Cloud project ID
 - `BIGQUERY_DATASET`: BigQuery dataset name for tests (default: test_dataset)
 
-**BigQuery Service Account Setup:**
+These values should **never** be stored as GitHub secrets on a public repository.
+
+**BigQuery Service Account Setup (for local testing):**
 
 1. Go to Google Cloud Console
 2. Create a new service account or use existing
@@ -100,7 +102,7 @@ Integration tests only run on push events to protected branches when these secre
    - BigQuery Data Editor
    - BigQuery Job User
 4. Create and download a JSON key
-5. Copy the entire JSON content as the `BIGQUERY_CREDENTIALS` secret
+5. Copy the entire JSON content as the `BIGQUERY_CREDENTIALS` value in `.secrets`
 
 ### npm Authentication
 
