@@ -1,6 +1,6 @@
 {
   "name": "@trafficbyintent/kysely-bigquery",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "description": "BigQuery Dialect for Kysely",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -55,6 +55,6 @@
   },
   "peerDependencies": {
     "@google-cloud/bigquery": "*",
-    "kysely": "*"
+    "kysely": "^0.28.0"
   }
 }
